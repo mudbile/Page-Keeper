@@ -128,8 +128,25 @@ var comptroller = (function(){
         } else if (message.request){
             // request : "subscription_list" : they want the current list
             if (message.request === 'subscription_list'){
-                console.log('sending: ' + {subscription_list: retObject.subredditNames}.subscription_list);
                 sendResponse({subscription_list: retObject.subredditNames});
+            }
+            // request : "toggle_status" : popup wants info for toggle button
+            //does not handle 'multi' yet- just returns 'multi' as the subreddit
+            if (message.request === 'toggle_permission'){
+                return gettingCurrentTab().then(tab => {
+                    console.log('url:' + tab.url);
+                    if (!tab.url.startsWith(retObject.baseString)){
+                        return new Promise.reject("active tab is not of reddit domain");
+                    } else {
+                        return tab;
+                    }
+                }).then(gettingCurrentSubredditOfTab)
+                  .then(currentSubreddit => {
+                    return {
+                            subreddit_included: retObject.isSubredditIncluded(currentSubreddit),
+                            subreddit_name: currentSubreddit
+                    };
+                });
             }
         }
     });
@@ -137,6 +154,38 @@ var comptroller = (function(){
     return retObject;
 
 })();
+
+
+
+
+// browser.tabs.onActivated.addListener(activeInfo => {
+//     browser.tabs.get(activeInfo.tabId).then(tab => {
+//         var retObject;
+//         if (tab.url.startsWith('https://www.reddit.com/')){
+//             gettingCurrentSubredditOfTab().then(subredditName => {
+//                 retObject = {
+//                                  action: 'update_toggle', 
+//                                  valid: true,
+//                                  included: comptroller.isSubredditIncluded(subredditName),
+//                                  subreddit_name: subredditName
+//                 }
+//                 browser.runtime.sendMessage(retObject);
+//             });
+//         } else {
+//             retObject = {
+//                 action: 'update_toggle', 
+//                 valid: false,
+//                 included: null,
+//                 subreddit_name: null
+//             }
+//             browser.runtime.sendMessage(retObject);
+//         }
+//     });
+// });
+
+
+
+
 
 
 // fetch('https://www.reddit.com/r/dataisbeautiful/.json?limit=5').then(response => {

@@ -29,6 +29,11 @@ button, a#goto-frontpage-a {
 button:hover, a#goto-frontpage-a:hover {
     background-color: rgb(163, 168, 175);
 }
+#toggle-for-current:disabled {
+    opacity: 0.4;
+    background-color: rgb(245, 227, 230);
+    cursor: inherit;
+}
 
 #row1 {
     display: grid;
@@ -41,7 +46,7 @@ button:hover, a#goto-frontpage-a:hover {
 #container {
     padding: 4px;
 }
-#current-toggle {
+#toggle {
     grid-column: 1 / span 1;
 }
 
@@ -62,12 +67,13 @@ button:hover, a#goto-frontpage-a:hover {
 
 }
 
+
 #generic-add-button {
     padding: 2px 4px 2px 4px;
     font-size: 14px;
 }
 #generic-add-row {
-    padding: 1px 0 0 7px;
+    padding: 1px 0 0 1px;
     margin: 2px 0 0 0;
     text-align: center;
 }

@@ -37,6 +37,7 @@ document.getElementById('generic-add-textbox').addEventListener('keyup', eventCo
 //dynamically creats a table of subscribed subreddits and inserts into popup dom
 //also updates frontpage url on the anchor
 var createSubscriptionsTable = function(subredditNames){
+    updateToggleState();
     updateFrontpageHref(subredditNames);
     var subscriptionList = document.getElementById('subscription-list');
     //message for no subreddits
@@ -118,6 +119,31 @@ var addingSubreddit = function(subredditName){
         }
     });
 }
+
+var updateToggleState = function(){
+    browser.runtime.sendMessage({request: 'toggle_permission'}).then(response => {
+        var toggleForCurrent = document.getElementById('toggle-for-current');
+        toggleForCurrent.disabled = false;
+        if (response){
+            console.log(response);
+            if (response.subreddit_included){
+                toggleForCurrent.innerHTML = '–';
+                toggleForCurrent.onclick = eventContext => {removingSubreddit(response.subreddit_name)};
+            } else {
+                toggleForCurrent.innerHTML = '+';
+                toggleForCurrent.onclick = eventContext => {addingSubreddit(response.subreddit_name)};
+            }
+        } else {
+            console.log("non-reddit domain");
+        }
+    }, reason => {
+        document.getElementById('toggle-for-current').disabled = true;
+    });
+}
+
+
+
+
 
 updatingSubscriptions();
 

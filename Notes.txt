@@ -30,3 +30,6 @@ When a script wants to know the subscription list, they send out a request, and 
 Note that the only functions that directly edit subredditNames are 
 updatingSubredditsFromDisk and savingSubredditsToDisk. 
 You notice that addSubreddit and removeSubreddit return a temp array.
+
+
+update toggle when you remove an item
