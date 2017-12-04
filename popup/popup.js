@@ -8,6 +8,17 @@ document.getElementById('subscription-details-toggle').addEventListener('click',
     }
 });
 
+
+var updateFrontpageHref = function(subredditNames){
+    var url;
+    if (subredditNames.length === 0){
+        url = 'https://www.reddit.com/';
+    } else {
+        url = 'https://www.reddit.com/r/' + subredditNames.join('+');
+    }
+    document.getElementById('goto-frontpage-a').setAttribute('href', url);
+}
+
 var addSubredditFromTextbox = function(){
     var genericAddTextbox = document.getElementById('generic-add-textbox');
     if (genericAddTextbox.value !== ''){
@@ -24,7 +35,9 @@ document.getElementById('generic-add-textbox').addEventListener('keyup', eventCo
 });
 
 //dynamically creats a table of subscribed subreddits and inserts into popup dom
+//also updates frontpage url on the anchor
 var createSubscriptionsTable = function(subredditNames){
+    updateFrontpageHref(subredditNames);
     var subscriptionList = document.getElementById('subscription-list');
     //message for no subreddits
     if (subredditNames.length === 0){
@@ -72,6 +85,8 @@ var createSubscriptionsTable = function(subredditNames){
 }
 
 //update subscription list from background.js and rebuild table
+//this is not guaranteed to be called whenever something changes - for that
+//use createSubscriptionsTable
 var updatingSubscriptions = function(){
     var sending = browser.runtime.sendMessage({request : 'subscription_list'});
     return sending.then(response => {

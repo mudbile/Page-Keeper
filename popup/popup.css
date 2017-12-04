@@ -9,7 +9,14 @@ body {
     min-width: 200px;
 }
 
-button {
+#goto-frontpage-a {
+    text-align: center;
+    color: rgb(68, 70, 71);
+    text-decoration: none;
+    grid-column: 2 / span 3;
+}
+
+button, a#goto-frontpage-a {
     cursor: pointer;
     font-size: 18px;
     background-color: rgb(199, 198, 207);
@@ -19,7 +26,7 @@ button {
     border: 0;
     border-radius: 4px;
 }
-button:hover {
+button:hover, a#goto-frontpage-a:hover {
     background-color: rgb(163, 168, 175);
 }
 
@@ -36,9 +43,6 @@ button:hover {
 }
 #current-toggle {
     grid-column: 1 / span 1;
-}
-#goto-frontpage {
-    grid-column: 2 / span 3;
 }
 
 #subscription-details-toggle {

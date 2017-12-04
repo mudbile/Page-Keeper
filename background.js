@@ -2,8 +2,8 @@
 
 var comptroller = (function(){
     var retObject = {};
-    retObject.subredditNames = ['science', 'australia', 'qwe', 'fdsg', 'wefrw', 'wefwefwfewefwfe', 'wefwef','science', 'australia', 'qwe', 'fdsg', 'wefrw', 'wefwefwfewefwfe', 'wefwef'].sort();
-    retObject.baseString = 'https://reddit.com/r/';
+    retObject.subredditNames = ['science', 'australia'].sort();
+    retObject.baseString = 'https://www.reddit.com/r/';
 
     //takes a subreddit name, returns whether it's currently included in array
     retObject.isSubredditIncluded = function(subredditName){
@@ -118,6 +118,12 @@ var comptroller = (function(){
                 var temp = retObject.addSubreddit(message.subreddit_name);
                 var saving = retObject.savingSubredditsToDisk(temp);
                 saving.then(sendResponse({subscription_list: retObject.subredditNames}));
+            }
+            // action : "goto_frontpage" : change currently active tab to front page
+            if (message.action === 'goto_frontpage'){
+                gettingCurrentTab().then(tab => {
+                    browser.tabs.update({url: retObject.getFullURL()})
+                }); 
             }
         } else if (message.request){
             // request : "subscription_list" : they want the current list

@@ -17,6 +17,12 @@ then update and save it out.
  // action : "remove_subreddit" : someone wants to remove a subreddit
             // will contain second property subreddit_name
 
+            add_subreddit
+
+
+            action : 'goto_frontpage'
+
+
 When a script wants to know the subscription list, they send out a request, and in the response will be the array.
 
 

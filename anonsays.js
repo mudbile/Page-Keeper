@@ -7,9 +7,9 @@ var anonSays = (function(){
     retObject.currentSubredditName = document.querySelector('.redditname').firstChild.innerHTML;
 
     //hide list of included subreddits on the multi page
+    console.log(retObject.currentSubredditName);
     if (retObject.currentSubredditName === 'multi'){
-        retObject.button.style.display = 'none';
-        document.querySelector('div.subscription-box').parentNode.parentNode.parentNode.style.display = 'none';
+        document.querySelector('div.sidecontentbox').style.display = 'none';
     }
 
     //message controller
