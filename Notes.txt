@@ -1,0 +1,26 @@
+The idea is that anonsays.js will store current subreddit on each reddit page visited, in its own variable.
+
+When a user clicks on a button in the popup, the popup sends a message to the background script, calling for it
+to add the current subreddit. The background script will then message the anonsays.js of the active tab, and
+request the subreddit it is storing. The anonsays.js will respond with the subreddit name, and the background script can
+then update and save it out.
+
+{request: 'current_subreddit'}  from background to get current tab from anonsays.js
+                                which will respond with {current_subreddit: '<whatever it happens to be>'}
+
+{action: 'add_current'}         from some script to background to add current tab
+
+{request : 'subscription_list'} from some script to background to return the current subredditNames array
+                                which will respond with {subscription_list: '<whatever it happens to be>'}
+
+
+ // action : "remove_subreddit" : someone wants to remove a subreddit
+            // will contain second property subreddit_name
+
+When a script wants to know the subscription list, they send out a request, and in the response will be the array.
+
+
+
+Note that the only functions that directly edit subredditNames are 
+updatingSubredditsFromDisk and savingSubredditsToDisk. 
+You notice that addSubreddit and removeSubreddit return a temp array.
