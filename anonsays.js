@@ -6,8 +6,14 @@ var anonSays = (function(){
     var retObject = {};
     retObject.currentPageSubreddits = (function(){
         var url = window.location.href.toLowerCase();
-        //  "https://www.reddit.com/r/<we want all of this>/"
-        var subredditsString = url.slice(url.indexOf('/r/') + 3, -1);
+        //  "https://www.reddit.com/r/<we want all of this>/blah/blah"
+        var startIndex = url.indexOf('/r/') + 3;
+        var endIndex = url.indexOf('/', startIndex);
+        if (endIndex === -1){
+            endIndex = url.length;
+        }
+        var subredditsString = url.slice(startIndex, endIndex);
+        console.log("string is: " + subredditsString);
         return subredditsString.split('+');
     })();
 
