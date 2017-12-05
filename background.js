@@ -14,27 +14,23 @@ var comptroller = (function(){
     //returns a sorted temp array which is this.subredditNames where subredditName is not present
     //assumes max of one instance of subredditName
     //if you want to make the change stick, you gotta save it out with saveSubredditsToDisk
-    retObject.removeSubreddit = function(subredditName){
-        //create new array of all elements
-        var temp = this.subredditNames.filter(elem => true); 
-        //remove it if necessary
-        var index = temp.indexOf(subredditName);
-        if (index >= 0) {
-            temp.splice( index, 1 );
-        }
+    retObject.removeSubreddits = function(subredditNames){
+        //create new array without elements
+        var temp = this.subredditNames.filter(elem => subredditNames.indexOf(elem) == -1);
         return temp.sort();
     }
     //returns a sorted temp array which is this.subredditNames where subredditName is added
     //if you want to make the change stick, you gotta save it out with saveSubredditsToDisk
-    retObject.addSubreddit = function(subredditName){
+    retObject.addSubreddits = function(subredditNames){
         //create new array of all elements
         var temp = this.subredditNames.filter(elem => true);
         //add if necessary
-        var index = temp.indexOf(subredditName);
-        if (index === -1) {
-            temp.push(subredditName);
+        for(var i = 0; i != subredditNames.length; ++i){
+            var index = temp.indexOf(subredditNames[i]);
+            if (index === -1) {
+                temp.push(subredditNames[i]);
+            }
         }
-        console.log("new array: " + temp);
         return temp.sort();
     }
 
@@ -85,10 +81,10 @@ var comptroller = (function(){
 
 
     //converses with given tab to retrieve current subreddit
-    var gettingCurrentSubredditOfTab = function(tab){
-        return browser.tabs.sendMessage(tab.id, {request: 'current_subreddit'}).then(response => {
-            if (response.current_subreddit){
-                return response.current_subreddit;
+    var gettingCurrentSubredditsOfTab = function(tab){
+        return browser.tabs.sendMessage(tab.id, {request: 'current_subreddits'}).then(response => {
+            if (response.current_subreddits){
+                return response.current_subreddits;
             }
         });
     };
@@ -96,26 +92,26 @@ var comptroller = (function(){
     //message listener controller
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action){
-            // action : "add_current" : add current subreddit from active tab
-            if (message.action === 'add_current'){
-                gettingCurrentTab().then(gettingCurrentSubredditOfTab).then(currentSubreddit => {
-                    var temp = retObject.addSubreddit(currentSubreddit);
-                    retObject.savingSubredditsToDisk(temp);
-                });
-            }
+            // // action : "add_current" : add current subreddit from active tab
+            // if (message.action === 'add_current'){
+            //     gettingCurrentTab().then(gettingCurrentSubredditOfTab).then(currentSubreddit => {
+            //         var temp = retObject.addSubreddit(currentSubreddit);
+            //         retObject.savingSubredditsToDisk(temp);
+            //     });
+            // }
             // action : "remove_subreddit" : someone wants to remove a subreddit
             // will contain second property subreddit_name
             // responds with the updated list
-            if (message.action === 'remove_subreddit' && message.subreddit_name){
-                var temp = retObject.removeSubreddit(message.subreddit_name);
+            if (message.action === 'remove_subreddits' && message.subreddit_names){4
+                var temp = retObject.removeSubreddits(message.subreddit_names);
                 var saving = retObject.savingSubredditsToDisk(temp);
                 saving.then(sendResponse({subscription_list: retObject.subredditNames}));
             }
             // action : "add_subreddit" : someone wants to add a subreddit
             // will contain second property subreddit_name
             // responds with the updated list
-            if (message.action === 'add_subreddit' && message.subreddit_name){
-                var temp = retObject.addSubreddit(message.subreddit_name);
+            if (message.action === 'add_subreddits' && message.subreddit_names){
+                var temp = retObject.addSubreddits(message.subreddit_names);
                 var saving = retObject.savingSubredditsToDisk(temp);
                 saving.then(sendResponse({subscription_list: retObject.subredditNames}));
             }
@@ -140,11 +136,12 @@ var comptroller = (function(){
                     } else {
                         return tab;
                     }
-                }).then(gettingCurrentSubredditOfTab)
-                  .then(currentSubreddit => {
+                }).then(gettingCurrentSubredditsOfTab)
+                  .then(currentSubreddits => {
                     return {
-                            subreddit_included: retObject.isSubredditIncluded(currentSubreddit),
-                            subreddit_name: currentSubreddit
+                            subreddit_included:  currentSubreddits.length == 1 
+                                                 && retObject.isSubredditIncluded(currentSubreddits[0]),
+                            subreddits: currentSubreddits
                     };
                 });
             }

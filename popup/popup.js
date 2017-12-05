@@ -22,15 +22,15 @@ var updateFrontpageHref = function(subredditNames){
 var addSubredditFromTextbox = function(){
     var genericAddTextbox = document.getElementById('generic-add-textbox');
     if (genericAddTextbox.value !== ''){
-        addingSubreddit(genericAddTextbox.value);
+        addingSubreddits(genericAddTextbox.value.toLowerCase().split('+'));
     }
+    document.getElementById('generic-add-textbox').value = '';
 }
 
 document.getElementById('generic-add-button').addEventListener('click', addSubredditFromTextbox);
 document.getElementById('generic-add-textbox').addEventListener('keyup', eventContext => {
     if (eventContext.key === 'Enter' ) {
         addSubredditFromTextbox();
-        document.getElementById('generic-add-textbox').value = '';
     }
 });
 
@@ -76,7 +76,7 @@ var createSubscriptionsTable = function(subredditNames){
         col2.firstElementChild.classList.add('subscription-list-remove');
         col2.firstElementChild.setAttribute("type", "button");
         col2.firstElementChild.innerHTML = "remove";
-        col2.addEventListener('click', eventContext => {removingSubreddit(subredditName)});
+        col2.addEventListener('click', eventContext => {removingSubreddits([subredditName])});
         //attach
         row.appendChild(col1);
         row.appendChild(col2);
@@ -100,8 +100,8 @@ var updatingSubscriptions = function(){
 
 //called by remove buttons in the table of subscribed subreddits
 //rebuilds whole table - could implement a caching system on this end
-var removingSubreddit = function(subredditName){
-    var sending = browser.runtime.sendMessage({action : 'remove_subreddit', subreddit_name: subredditName});
+var removingSubreddits = function(subredditNames){
+    var sending = browser.runtime.sendMessage({action : 'remove_subreddits', subreddit_names: subredditNames});
     return sending.then(response => {
         if (response.subscription_list){
             createSubscriptionsTable(response.subscription_list);
@@ -111,8 +111,8 @@ var removingSubreddit = function(subredditName){
 
 //called by add button next to textbox for adding a subreddit by name
 //rebuilds whole table - could implement a caching system on this end
-var addingSubreddit = function(subredditName){
-    var sending = browser.runtime.sendMessage({action : 'add_subreddit', subreddit_name: subredditName});
+var addingSubreddits = function(subredditNames){
+    var sending = browser.runtime.sendMessage({action : 'add_subreddits', subreddit_names: subredditNames});
     return sending.then(response => {
         if (response.subscription_list){
             createSubscriptionsTable(response.subscription_list);
@@ -128,10 +128,10 @@ var updateToggleState = function(){
             console.log(response);
             if (response.subreddit_included){
                 toggleForCurrent.innerHTML = '–';
-                toggleForCurrent.onclick = eventContext => {removingSubreddit(response.subreddit_name)};
+                toggleForCurrent.onclick = eventContext => {removingSubreddits([response.subreddits[0]])};
             } else {
                 toggleForCurrent.innerHTML = '+';
-                toggleForCurrent.onclick = eventContext => {addingSubreddit(response.subreddit_name)};
+                toggleForCurrent.onclick = eventContext => {addingSubreddits(response.subreddits)};
             }
         } else {
             console.log("non-reddit domain");
