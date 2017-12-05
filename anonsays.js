@@ -6,11 +6,10 @@ var anonSays = (function(){
     var retObject = {};
     retObject.currentPageSubreddits = (function(){
         var url = window.location.href.toLowerCase();
+        //  "https://www.reddit.com/r/<we want all of this>/"
         var subredditsString = url.slice(url.indexOf('/r/') + 3, -1);
         return subredditsString.split('+');
     })();
-    
-    document.querySelector('.redditname').firstChild.innerHTML;
 
     //hide list of included subreddits on the multi page
     if (retObject.currentPageSubreddits.length != 1){

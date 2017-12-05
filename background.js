@@ -50,7 +50,7 @@ var comptroller = (function(){
         });
     };
 
-    //saves out an array pf subredditNames to local disk and updates this.subredditNames
+    //saves out an array of subredditNames to local disk and updates this.subredditNames
     retObject.savingSubredditsToDisk = function(subredditNames){
         this.subredditNames = subredditNames;
         return browser.storage.local.set({'subredditNames': this.subredditNames});
@@ -64,10 +64,6 @@ var comptroller = (function(){
     });
 
 
-
-
-
-
     //queries for the currently active tab
     var gettingCurrentTab = function(){
         return browser.tabs.query({
@@ -75,9 +71,6 @@ var comptroller = (function(){
             active: true
         }).then(tabs => { return tabs[0];});
     };
-
-
-
 
 
     //converses with given tab to retrieve current subreddit
@@ -90,47 +83,39 @@ var comptroller = (function(){
     };
 
     //message listener controller
+    //you can either return info by sendmessage or by returning a promise that returns some info
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action){
-            // // action : "add_current" : add current subreddit from active tab
-            // if (message.action === 'add_current'){
-            //     gettingCurrentTab().then(gettingCurrentSubredditOfTab).then(currentSubreddit => {
-            //         var temp = retObject.addSubreddit(currentSubreddit);
-            //         retObject.savingSubredditsToDisk(temp);
-            //     });
-            // }
-            // action : "remove_subreddit" : someone wants to remove a subreddit
-            // will contain second property subreddit_name
-            // responds with the updated list
             if (message.action === 'remove_subreddits' && message.subreddit_names){4
                 var temp = retObject.removeSubreddits(message.subreddit_names);
                 var saving = retObject.savingSubredditsToDisk(temp);
                 saving.then(sendResponse({subscription_list: retObject.subredditNames}));
             }
-            // action : "add_subreddit" : someone wants to add a subreddit
-            // will contain second property subreddit_name
+
             // responds with the updated list
             if (message.action === 'add_subreddits' && message.subreddit_names){
                 var temp = retObject.addSubreddits(message.subreddit_names);
                 var saving = retObject.savingSubredditsToDisk(temp);
                 saving.then(sendResponse({subscription_list: retObject.subredditNames}));
             }
-            // action : "goto_frontpage" : change currently active tab to front page
+
             if (message.action === 'goto_frontpage'){
                 gettingCurrentTab().then(tab => {
                     browser.tabs.update({url: retObject.getFullURL()})
                 }); 
             }
+
         } else if (message.request){
-            // request : "subscription_list" : they want the current list
+            // they want the current list
             if (message.request === 'subscription_list'){
                 sendResponse({subscription_list: retObject.subredditNames});
             }
-            // request : "toggle_status" : popup wants info for toggle button
-            //does not handle 'multi' yet- just returns 'multi' as the subreddit
+
+            // popup wants info for toggle button
             if (message.request === 'toggle_permission'){
+                
                 return gettingCurrentTab().then(tab => {
-                    console.log('url:' + tab.url);
+                    //rejection travels through the chains if url is not reddit domain
                     if (!tab.url.startsWith(retObject.baseString)){
                         return new Promise.reject("active tab is not of reddit domain");
                     } else {
@@ -138,7 +123,7 @@ var comptroller = (function(){
                     }
                 }).then(gettingCurrentSubredditsOfTab)
                   .then(currentSubreddits => {
-                    return {
+                    return {                     //this is why you can't remove by toggle button if multi
                             subreddit_included:  currentSubreddits.length == 1 
                                                  && retObject.isSubredditIncluded(currentSubreddits[0]),
                             subreddits: currentSubreddits
@@ -154,37 +139,7 @@ var comptroller = (function(){
 
 
 
-
-// browser.tabs.onActivated.addListener(activeInfo => {
-//     browser.tabs.get(activeInfo.tabId).then(tab => {
-//         var retObject;
-//         if (tab.url.startsWith('https://www.reddit.com/')){
-//             gettingCurrentSubredditOfTab().then(subredditName => {
-//                 retObject = {
-//                                  action: 'update_toggle', 
-//                                  valid: true,
-//                                  included: comptroller.isSubredditIncluded(subredditName),
-//                                  subreddit_name: subredditName
-//                 }
-//                 browser.runtime.sendMessage(retObject);
-//             });
-//         } else {
-//             retObject = {
-//                 action: 'update_toggle', 
-//                 valid: false,
-//                 included: null,
-//                 subreddit_name: null
-//             }
-//             browser.runtime.sendMessage(retObject);
-//         }
-//     });
-// });
-
-
-
-
-
-
+//***********example of javascript fetching from reddit api****************//
 // fetch('https://www.reddit.com/r/dataisbeautiful/.json?limit=5').then(response => {
 //     return response.json();
 

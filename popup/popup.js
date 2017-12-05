@@ -8,9 +8,10 @@ document.getElementById('subscription-details-toggle').addEventListener('click',
     }
 });
 
-
+//joins all the subreddit names into a url for the "go to frontpage" button
 var updateFrontpageHref = function(subredditNames){
     var url;
+    //go to reddit home if there are no subreddits stored
     if (subredditNames.length === 0){
         url = 'https://www.reddit.com/';
     } else {
@@ -19,6 +20,8 @@ var updateFrontpageHref = function(subredditNames){
     document.getElementById('goto-frontpage-a').setAttribute('href', url);
 }
 
+//user can type in the textbox to add any string. no error checking. probably dangerous
+//automatically splits by '+'
 var addSubredditFromTextbox = function(){
     var genericAddTextbox = document.getElementById('generic-add-textbox');
     if (genericAddTextbox.value !== ''){
@@ -26,7 +29,7 @@ var addSubredditFromTextbox = function(){
     }
     document.getElementById('generic-add-textbox').value = '';
 }
-
+//user can add by pressing <enter> of the "add" button
 document.getElementById('generic-add-button').addEventListener('click', addSubredditFromTextbox);
 document.getElementById('generic-add-textbox').addEventListener('keyup', eventContext => {
     if (eventContext.key === 'Enter' ) {
@@ -120,12 +123,14 @@ var addingSubreddits = function(subredditNames){
     });
 }
 
+//updates the "current subreddit" toggle
 var updateToggleState = function(){
+    //on failure, this disables the toggle
     browser.runtime.sendMessage({request: 'toggle_permission'}).then(response => {
         var toggleForCurrent = document.getElementById('toggle-for-current');
         toggleForCurrent.disabled = false;
         if (response){
-            console.log(response);
+            //we don't remove any if it's a multi (subreddit_included returns false), but we add all
             if (response.subreddit_included){
                 toggleForCurrent.innerHTML = '–';
                 toggleForCurrent.onclick = eventContext => {removingSubreddits([response.subreddits[0]])};
@@ -133,16 +138,11 @@ var updateToggleState = function(){
                 toggleForCurrent.innerHTML = '+';
                 toggleForCurrent.onclick = eventContext => {addingSubreddits(response.subreddits)};
             }
-        } else {
-            console.log("non-reddit domain");
-        }
+        } 
     }, reason => {
         document.getElementById('toggle-for-current').disabled = true;
     });
 }
-
-
-
 
 
 updatingSubscriptions();
