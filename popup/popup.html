@@ -6,29 +6,44 @@
   <link rel="stylesheet" href="popup.css">
 
 <body>
+  <!--banner-->
   <div id="title">AnonSays</div>
 
   <div id="container">
 
+    <!--[+][go to front page]-->
     <div id="row1">
       <button type="button" id="toggle-for-current">+</button>
-     <a id='goto-frontpage-a' href='https://www.google.com'>front page</a>
+     <a id='goto-frontpage-a' href='https://www.reddit.com/'>front page</a>
     </div>
 
+    <!--folder buttons-->
+    <div id="folder-manager-grid">
+        <select id='folder-selections'></select>
+        <button id="folder-rename">rename</button>
+        <button id='folder-duplicate'>duplicate</button>
+        <button id='folder-new'>new</button>
+        <button id='folder-delete'>delete</button>
+        <button id='folder-generate-random'>?</button>
+    </div>
+
+    <!--edit subscriptions toggle button-->
     <button type="button" id="subscription-details-toggle">edit subscriptions</button>
-  
+    <!--edit subsciptions area-->
     <div id="subscription-details">
+
+      <!--add arbitrary subreddits-->
       <div id="generic-add-row">
         <input type="text" id="generic-add-textbox" value=""/>
         <button type="button" id="generic-add-button">add</button>
       </div>
 
-      <div id="subscription-list">
+      <!--display subreddits for folder as dynamically generated table in here-->
+      <div id="subscription-table-div">
         no subscriptions yet
       </div>
 
     </div>
-    
   </div>
 
   <script src="popup.js"></script>
