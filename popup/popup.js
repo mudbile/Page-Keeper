@@ -12,7 +12,7 @@ var popupManager = (function(){
     popupManager.folderRenameButton = document.getElementById('folder-rename');
     popupManager.folderDuplicateButton = document.getElementById('folder-duplicate');
     popupManager.folderNewButton = document.getElementById('folder-new');
-    popupManager.folderDeleteButton = document.getElementById('folder-delete');
+    popupManager.folderRemoveButton = document.getElementById('folder-delete');
     popupManager.gotoFrontPageAnchor =  document.getElementById('goto-frontpage-a');
     popupManager.addSubredditsTextbox = document.getElementById('generic-add-textbox');
     popupManager.addSubredditsButton =  document.getElementById('generic-add-button');
@@ -77,8 +77,21 @@ var popupManager = (function(){
         //update the ui
         sending.then(response => {
             popupManager.addFolderToSelections(id);
-            popupManager.setActiveFolder(id, response.subreddits);}
-        );
+            popupManager.setActiveFolder(id, response.subreddits);
+        });
+    });
+    //deletes the selected folder and updates the ui
+    //won't take much for me to want to pull the guts out into a function
+    popupManager.folderRemoveButton.addEventListener('click', eventContext => {
+        var id = popupManager.folderSelections.selectedOptions[0].text;
+        console.log('selected: ' + id);
+        //remove folder from disk
+        var sending = browser.runtime.sendMessage({action: 'remove_folder', folder_id: id});
+        //update the ui
+        sending.then(() => {
+            popupManager.removeFolderFromSelections(id);
+            popupManager.setActiveFolder(popupManager.getActiveFolderId());
+        });
     });
 
 
@@ -103,6 +116,20 @@ var popupManager = (function(){
         this.folderSelections.add(new Option(id));
         this.sortOptions();
     }
+    //removes a folder the selections menu item
+    popupManager.removeFolderFromSelections = function(id){
+                var options = popupManager.folderSelections.options;
+                var optionToDelete = null;
+                //find the options element that matched the id
+                for (var i = 0; i != options.length; ++i){
+                    if (options[i].value === id){
+                        optionToDelete = options[i];
+                        break;
+                    }
+                }
+                //remove it if it's not still null
+                optionToDelete && this.folderSelections.remove(optionToDelete.index);
+            }
     
     //sorts the selection menu items into alphabetical order
     popupManager.sortOptions= function(){
@@ -186,15 +213,16 @@ var popupManager = (function(){
         if (this.getActiveFolderId() === null){
             this.folderDetailsToggle.disabled = true;
             this.folderRenameButton.disabled = true;
-            this.folderDeleteButton.disabled = true;
+            this.folderRemoveButton.disabled = true;
             this.folderDuplicateButton.disabled = true;
             this.folderSelections.disabled = true;
+            popupManager.folderDetailsDiv.style.display = 'none';
             return;
         } else {
             this.folderDetailsToggle.disabled = false;
             this.folderDetailsToggle.disabled = false;
             this.folderRenameButton.disabled = false;
-            this.folderDeleteButton.disabled = false;
+            this.folderRemoveButton.disabled = false;
             this.folderDuplicateButton.disabled = false;
             this.folderSelections.disabled = false;
         }

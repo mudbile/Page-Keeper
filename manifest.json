@@ -19,7 +19,8 @@
       "browser_action": {
         "default_icon": "icons/anonsays-48.png",
         "default_title": "AnonSays",
-        "default_popup": "popup/popup.html"
+        "default_popup": "popup/popup.html",
+        "browser_style": false
       },
     
       "content_scripts": [

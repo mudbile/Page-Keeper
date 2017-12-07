@@ -33,8 +33,8 @@ var InitComptroller = function(){
             //remove subreddits from a specific folder
             if (message.action === 'remove_subreddits' && message.folder_id && message.subreddits){
                 //removeSubreddits doesnt actually change anything- just returns a hypothetical array
-                var temp = comptroller.manager.removeSubreddits(message.folder_id, message.subreddits);
-                var saving = comptroller.manager.savingFolderToDisk(message.folder_id, temp);
+                comptroller.manager.removeSubreddits(message.folder_id, message.subreddits);
+                var saving = comptroller.manager.savingAllFoldersToDisk();
                 return saving.then(() => {
                     return {subreddits: comptroller.manager.getSubreddits(message.folder_id)};
                 });
@@ -42,8 +42,8 @@ var InitComptroller = function(){
 
             // add subreddits to a specific folder
             if (message.action === 'add_subreddits' && message.folder_id && message.subreddits){
-                var temp = comptroller.manager.addSubreddits(message.folder_id, message.subreddits);
-                var saving = comptroller.manager.savingFolderToDisk(message.folder_id, temp);
+                comptroller.manager.addSubreddits(message.folder_id, message.subreddits);
+                var saving = comptroller.manager.savingAllFoldersToDisk();
                 return saving.then(() => {
                    return {subreddits: comptroller.manager.getSubreddits(message.folder_id)};
                 });
@@ -51,11 +51,17 @@ var InitComptroller = function(){
 
             // add subreddit folder
             if (message.action === 'add_folder' && message.folder_id && message.subreddits){                
-                var folder = comptroller.manager.addFolder(message.folder_id, message.subreddits);
-                var saving = comptroller.manager.savingFolderToDisk(folder.id, folder.subreddits);
+                comptroller.manager.addFolder(message.folder_id, message.subreddits);
+                var saving = comptroller.manager.savingAllFoldersToDisk();
                 return saving.then(() => {
                     return {subreddits: comptroller.manager.getSubreddits(message.folder_id)};
                 });
+            }
+
+            // add subreddit folder
+            if (message.action === 'remove_folder' && message.folder_id){                
+                comptroller.manager.removeFolder(message.folder_id, message.subreddits);
+                return comptroller.manager.savingAllFoldersToDisk();
             }
 
         } else if (message.request){
@@ -117,10 +123,11 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
 
     //immutable properties
     Object.defineProperty(subredditFolder, 'manager', {
-        value: subredditFolderManager
+        value: subredditFolderManager,
     });
     Object.defineProperty(subredditFolder, 'id', {
-        value: id
+        value: id,
+        enumerable: true
     });
 
     
@@ -137,14 +144,14 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
         return areIncluded;
     };
 
-    //returns a hypothetical sorted temp array- you gotta manually make it stick if you want
+    //returns the new sorted subreddits array
     //assumes max of one instance of subredditName
     subredditFolder.removeSubreddits = function(subredditNames){
         //copies array, filtering out the removed ones
         var temp = this.subreddits.filter(subreddit => subredditNames.indexOf(subreddit) == -1);
-        return temp.sort();
+        this.subreddits = temp.sort();
+        return this.subreddits
     }
-    //returns a hypothetical sorted temp array- you gotta manually make it stick if you want
     //won't add an extra one if entry already exists
     subredditFolder.addSubreddits = function(subredditNames){
         //copies the array
@@ -156,7 +163,8 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
                 temp.push(subredditNames[i]);
             }
         }
-        return temp.sort();
+        this.subreddits = temp.sort();
+        return this.subreddits;
     }
 
     //makes and returns the full url of the folder's front page
@@ -208,6 +216,17 @@ var InitSubredditFolderManager = function(){
         return this.folders[id];
     };
 
+    //does not save to disk
+    //returns true on successful deletion 
+    //(ie the return of delete operator)
+    manager.removeFolder = function(id){
+        //check args
+        if (!id){
+            throw "argument: 'id' required";
+        }
+        return delete this.folders[id];
+    };
+
     //get subreddits of a specific folder
     manager.getSubreddits = function(folderId){
         return this.getFolderById(folderId).subreddits;
@@ -218,7 +237,6 @@ var InitSubredditFolderManager = function(){
     };
 
     //adds subreddits to a folder
-    //returns a hypothetical array- you need to manually lock that array in and save to disk
     manager.addSubreddits = function(folderId, subredditNames){
         var folder = this.getFolderById(folderId);
         return folder.addSubreddits(subredditNames);
@@ -240,14 +258,25 @@ var InitSubredditFolderManager = function(){
             if (response.manager_set_dict){
                 dict = response.manager_set_dict;
             }
-
-            Object.keys(dict).forEach(key => {
-                console.log(key +' : ' + dict[key]);
-                manager.folders[key] = SubredditFolderFactory(this, key, dict[key].subreddits);
+            Object.keys(dict).forEach(id => {
+                console.log(id +' : ' + dict[id]);
+                manager.folders[id] = SubredditFolderFactory(this, id, dict[id]);
             });
             return manager.folders;
         });
     }
+
+    //saves out all folders to disk
+    manager.savingAllFoldersToDisk = function(){
+        //we just need the id->subreddits info, not the functions etc
+        var dict = {};
+        Object.keys(this.folders).forEach(id => {
+            dict[id] = this.folders[id].subreddits;
+        });
+        console.log(dict);
+        return browser.storage.local.set({'manager_set_dict': dict});
+        
+    };
 
     //called to update a specific folder's subreddit list. 
     //NOTE: assumes the folder is already a legit object gotten by SubredditFolderFactory
@@ -260,31 +289,13 @@ var InitSubredditFolderManager = function(){
             if (response.manager_set_dict){
                 dict = response.manager_set_dict;
             }
-            if (dict[folder.id] && dict[folder.id].subreddits){
-                folder.subreddits = dict[folder.id].subreddits
+            if (dict[folder.id]){
+                folder.subreddits = dict[folder.id];
             }
             return folder.getFullURL();
         });
     };
 
-    //retreives the dataset from file, updates it, then saves it back out
-    //you could make this more efficient by storing each folder as it's own object
-    manager.savingFolderToDisk = function(folderId, subredditNames){
-        var folder = this.getFolderById(folderId);
-        return browser.storage.local.get('manager_set_dict').then((response) => {
-            var dict = {};
-            if (response.manager_set_dict){
-                dict = response.manager_set_dict;
-            }
-            if (!dict.hasOwnProperty(folder.id)){
-                dict[folder.id] = {}
-            }
-            folder.subreddits = subredditNames;
-            dict[folder.id].subreddits = folder.subreddits;
-            return browser.storage.local.set({'manager_set_dict': dict});
-        });
-    };
-        
     //this is async, but should be done before popup is clicked on
     manager.initAllFoldersFromDisk();
     return manager;
