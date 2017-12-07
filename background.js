@@ -118,13 +118,14 @@ var InitComptroller = function(){
 //should only be called by manager
 //call this when you're loading in a subreddit from disk- don't just fill in id and subreddits
 //otherwise you won't get the functions
+//makes a copy of the subreddits so you don't have to worry about that higher up the chain
 var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddits){
     if (!initalSubreddits){
         initalSubreddits = [];
     }
 
     var subredditFolder = {};
-    subredditFolder.subreddits = initalSubreddits.sort();
+    subredditFolder.subreddits = initalSubreddits.filter(elem => true).sort();
 
     //immutable properties
     Object.defineProperty(subredditFolder, 'manager', {

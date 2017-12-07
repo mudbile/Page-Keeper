@@ -48,18 +48,10 @@ var popupManager = (function(){
     });
     popupManager.addSubredditsTextbox.addEventListener('keyup', eventContext => {
         if (eventContext.key === 'Enter' ) {
-            testMessage('i am ddd');
             popupManager.addSubredditFromTextbox();
         }
     });
-    //user can type in the textbox to add any string. no error checking. probably dangerous
-    //automatically splits by '+'
-    popupManager.addSubredditFromTextbox = function(){
-        if (popupManager.addSubredditsTextbox.value !== ''){
-            popupManager.addingSubreddits(popupManager.addSubredditsTextbox.value.toLowerCase().split('+'));
-        }
-        popupManager.addSubredditsTextbox.value = '';
-    };
+    
     //handle displaying / hiding subscription details
     popupManager.folderDetailsToggle.addEventListener('click', eventContext => {
         var details = popupManager.folderDetailsDiv;
@@ -70,6 +62,56 @@ var popupManager = (function(){
         }
     });
 
+    //adds a new folder and updates the ui
+    //won't take much for me to want to pull the guts out into a function
+    popupManager.folderNewButton.addEventListener('click', eventContext => {
+        var id = popupManager.getUniqueIdFromUser();
+        popupManager.addingFolder(id);
+    });
+    //deletes the selected folder and updates the ui
+    //won't take much for me to want to pull the guts out into a function
+    popupManager.folderRemoveButton.addEventListener('click', eventContext => {
+        var id = popupManager.folderSelections.selectedOptions[0].text;
+        popupManager.removingFolder(id);
+    });
+    //makes a copy of active folder, asking user for id for new folder
+    popupManager.folderDuplicateButton.addEventListener('click', eventContext => {
+        var copyFromId = popupManager.folderSelections.selectedOptions[0].text;
+        var copyToId = popupManager.getUniqueIdFromUser();
+        popupManager.duplicatingFolder(copyFromId, copyToId);
+    });
+    //duplicates and then removes old copy- this is beacuse i want the folders immutable
+    popupManager.folderRenameButton.addEventListener('click', eventContext => {
+        var newId = popupManager.getUniqueIdFromUser();
+        var oldId = popupManager.getActiveFolderId();
+        //you have to remove folder after duplicating, not async, because
+        //you dont know when the active folder will change AND when the subreddits
+        //have been copied
+        popupManager.duplicatingFolder(oldId, newId).then(() => {
+            popupManager.removingFolder(oldId);
+        });
+    });
+
+    //makes a copy of a folder, giving it the id: copyToId, and updates ui
+    popupManager.duplicatingFolder = function(copyFromId, copyToId){
+        return browser.runtime.sendMessage({request  : 'folder_subreddits', 
+                                            folder_id: copyFromId})
+        .then(response => {
+            
+            return popupManager.addingFolder(copyToId, response.folder_subreddits);
+        });
+    }
+
+    //user can type in the textbox to add any string. no error checking. probably dangerous
+    //automatically splits by '+'
+    popupManager.addSubredditFromTextbox = function(){
+        if (popupManager.addSubredditsTextbox.value !== ''){
+            popupManager.addingSubreddits(popupManager.addSubredditsTextbox.value.toLowerCase().split('+'));
+        }
+        popupManager.addSubredditsTextbox.value = '';
+    };
+
+    //subreddits optional - defaults to []
     popupManager.addingFolder = function(id, subreddits){
         if (!subreddits){
             subreddits = [];
@@ -91,33 +133,6 @@ var popupManager = (function(){
             popupManager.setActiveFolder(popupManager.getActiveFolderId());
         });
     };
-
-    //adds a new folder and updates the ui
-    //won't take much for me to want to pull the guts out into a function
-    popupManager.folderNewButton.addEventListener('click', eventContext => {
-        var id = popupManager.getUniqueIdFromUser();
-        popupManager.addingFolder(id);
-    });
-    //deletes the selected folder and updates the ui
-    //won't take much for me to want to pull the guts out into a function
-    popupManager.folderRemoveButton.addEventListener('click', eventContext => {
-        var id = popupManager.folderSelections.selectedOptions[0].text;
-        popupManager.removingFolder(id);
-    });
-    popupManager.folderRenameButton.addEventListener('click', eventContext => {
-        //get new name
-        var newId = popupManager.getUniqueIdFromUser();
-        var oldId = popupManager.getActiveFolderId();
-        //get subreddits of old folder
-        browser.runtime.sendMessage({request  : 'folder_subreddits', 
-                                     folder_id: oldId})
-        .then(response => {
-            testMessage(response.folder_subreddits);
-            popupManager.addingFolder(newId, response.folder_subreddits).then(() => {
-                popupManager.removingFolder(oldId);
-            });
-        });
-    });
 
     //prompts are optional- there are defaults
     //returns null on cancel
