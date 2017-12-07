@@ -339,12 +339,6 @@ var popupManager = (function(){
     //called by remove buttons in the table of subreddits
     //rebuilds whole table - could implement a caching system on this end
     popupManager.removingSubreddits = function(subreddits){
-        //could be important but i don't see how
-        // if (this.getActiveFolderId() === null){
-        //     this.updatePopup([]);
-        //     return;
-        // }
-        
         //remove subreddits from backend
         var sending = browser.runtime.sendMessage({ action       : 'remove_subreddits',
                                                     folder_id    : this.getActiveFolderId(),
