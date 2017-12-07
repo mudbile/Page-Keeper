@@ -5,9 +5,9 @@ var InitComptroller = function(){
     //manager manages the subreddit folders
     comptroller.manager = InitSubredditFolderManager();
 
-
+    //given a suitable multi url (eg https://www.reddit.com/user/deltaprogress/m/artncomics/)
+    //returns a promised array of subreddit names- those that the multi contains
     comptroller.gettingMultiSubreddits = function(url){
-        console.log('lof');
         //create api url
         var base = 'https://www.reddit.com/';
         var api = 'api/multi/';
@@ -19,11 +19,11 @@ var InitComptroller = function(){
             for (var i = 0; i != response.data.subreddits.length; ++i){
                 subredditNames.push(response.data.subreddits[i].name);
             }
-            console.log(subredditNames);
             return subredditNames;
         });
     };
-    
+    //given an api url(e.g. https://www.reddit.com/api/multi/user/deltaprogress/m/artncomics/.json)
+    //returns the decoded json object found there
     comptroller.gettingRedditApiResponse = function(apiURL){
         return fetch(apiURL).then(response => {
             return response.json();
@@ -45,10 +45,7 @@ var InitComptroller = function(){
 
     //converses with given tab to retrieve current subreddit
     comptroller.gettingCurrentSubredditsOfTab = function(tab){
-        console.log('right here bro5');
         return browser.tabs.sendMessage(tab.id, {request: 'current_subreddits'}).then(response => {
-            console.log('weather');
-            console.log(response);
             if (response.current_subreddits){
                 return response.current_subreddits;
             }
@@ -103,15 +100,11 @@ var InitComptroller = function(){
         } else if (message.request){
             //for testing purposes
             if (message.request === 'console'){
-                console.log(message.message);
             }
 
             //go through reddit api
             if (message.request === 'multi_subreddits' && message.url){
-                console.log('lof1');
                 return comptroller.gettingMultiSubreddits(message.url).then(response => {
-                    console.log('lof3');
-                    console.log(response);
                     return {multi_subreddits: response};
                 });
             }
@@ -134,16 +127,13 @@ var InitComptroller = function(){
                     
                     //rejection travels through the chains if url is not reddit domain
                     if(!comptroller.isURLValidForAddingSubreddits(tab.url)){
-                        console.log('right here bro not good');
                         return new Promise.reject("active tab is not of reddit domain");
                     } else {
-                        console.log('right here bro3');
                         return tab;
                     }
                 //if the current page is already included, the button should be [-] and remove it on click
                 }).then(comptroller.gettingCurrentSubredditsOfTab)
                   .then(currentSubreddits => {
-                    console.log('bitttttt');
                     return {                     //this is why you can't remove by toggle button if multi
                             subreddit_included:  currentSubreddits.length == 1 
                                                  && comptroller.manager.areSubredditsIncluded(message.folder_id, 
@@ -190,11 +180,8 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
 
     //takes an array of subreddit names, returns whether any currently included in array
     subredditFolder.areSubredditsIncluded = function(subreddits){
-        console.log('hut');
         var areIncluded = false;
         for (var i = 0; i != subreddits.length; ++i){
-            console.log(i);
-            console.log(subreddits[i]);
             if (this.subreddits.indexOf(subreddits[i]) != -1){
                 areIncluded = true;
                 break;
@@ -305,7 +292,6 @@ var InitSubredditFolderManager = function(){
     }
     
     manager.areSubredditsIncluded = function(folderId, subreddits){
-        console.log('piza');
         return this.getFolderById(folderId).areSubredditsIncluded(subreddits);
 
     }
@@ -318,7 +304,6 @@ var InitSubredditFolderManager = function(){
                 dict = response.manager_set_dict;
             }
             Object.keys(dict).forEach(id => {
-                console.log(id +' : ' + dict[id]);
                 manager.folders[id] = SubredditFolderFactory(this, id, dict[id]);
             });
             return manager.folders;

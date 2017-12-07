@@ -7,10 +7,8 @@ var anonSays = (function(){
     retObject.subreddits = null;
     
     retObject.gettingCurrentPageSubreddits = function(){
-        console.log('right here2');
         var url = window.location.href.toLowerCase();
         var subredditsFromThusURL = this.getSubredditsFromWithinUrl(url);
-        console.log('right here');
         if (subredditsFromThusURL){
             this.subreddits = subredditsFromThusURL;
             return Promise.resolve(subredditsFromThusURL);
@@ -18,9 +16,7 @@ var anonSays = (function(){
         //case 2: get list of multi subreddits from api
         else{
             if (url.indexOf('/m/') !== -1){
-                console.log('heyah bro: ' + url);
                 return browser.runtime.sendMessage({request: 'multi_subreddits', url: url}).then(response => {
-                    console.log(response);
                     retObject.subreddits = response.multi_subreddits;
                     return response.multi_subreddits;
                 });
@@ -60,10 +56,7 @@ var anonSays = (function(){
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.request){
             if (message.request === 'current_subreddits'){
-                console.log('made it here');
                 if (retObject.subreddits){
-                    console.log('made it here001');
-                    console.log(retObject.subreddits);
                     sendResponse({current_subreddits: retObject.subreddits});
                 } else {
                     var getting = retObject.gettingCurrentPageSubreddits();
