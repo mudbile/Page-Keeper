@@ -4,6 +4,17 @@ var testMessage = function(message){
 }
 
 
+
+window.addEventListener('unload', eventContext => {
+    //remember active folder here
+    //browser.runtime.sendMessage({request: 'console', message: 'would save here}'});
+});
+window.addEventListener('load', eventContext => {
+    //rememebr actgive folder here
+});
+
+
+
 var popupManager = (function(){
     var popupManager = {};
     popupManager.baseURL = 'https://www.reddit.com/r/';
@@ -58,42 +69,79 @@ var popupManager = (function(){
             details.style.display = 'none';
         }
     });
-    //adds a new folder and updates the ui
-    //won't take much for me to want to pull the guts out into a function
-    popupManager.folderNewButton.addEventListener('click', eventContext => {
-        //get name from user
-        var id = prompt('Enter a unique name:');
-        if (id === null){
-            return;
-        }
-        while(popupManager.isValueInArray(id, popupManager.getIdPool())){
-            id = prompt('Name already exists. Enter a unique name:');
-            if (id === null){
-                return;
-            }
+
+    popupManager.addingFolder = function(id, subreddits){
+        if (!subreddits){
+            subreddits = [];
         }
         //add folder to disk
-        var sending = browser.runtime.sendMessage({action: 'add_folder', folder_id: id, subreddits: []});
+        var sending = browser.runtime.sendMessage({action: 'add_folder', folder_id: id, subreddits: subreddits});
         //update the ui
-        sending.then(response => {
+        return sending.then(response => {
             popupManager.addFolderToSelections(id);
             popupManager.setActiveFolder(id, response.subreddits);
         });
+    };
+    popupManager.removingFolder = function(id){
+        //remove folder from disk
+        var sending = browser.runtime.sendMessage({action: 'remove_folder', folder_id: id});
+        //update the ui
+        return sending.then(() => {
+            popupManager.removeFolderFromSelections(id);
+            popupManager.setActiveFolder(popupManager.getActiveFolderId());
+        });
+    };
+
+    //adds a new folder and updates the ui
+    //won't take much for me to want to pull the guts out into a function
+    popupManager.folderNewButton.addEventListener('click', eventContext => {
+        var id = popupManager.getUniqueIdFromUser();
+        popupManager.addingFolder(id);
     });
     //deletes the selected folder and updates the ui
     //won't take much for me to want to pull the guts out into a function
     popupManager.folderRemoveButton.addEventListener('click', eventContext => {
         var id = popupManager.folderSelections.selectedOptions[0].text;
-        console.log('selected: ' + id);
-        //remove folder from disk
-        var sending = browser.runtime.sendMessage({action: 'remove_folder', folder_id: id});
-        //update the ui
-        sending.then(() => {
-            popupManager.removeFolderFromSelections(id);
-            popupManager.setActiveFolder(popupManager.getActiveFolderId());
+        popupManager.removingFolder(id);
+    });
+    popupManager.folderRenameButton.addEventListener('click', eventContext => {
+        //get new name
+        var newId = popupManager.getUniqueIdFromUser();
+        var oldId = popupManager.getActiveFolderId();
+        //get subreddits of old folder
+        browser.runtime.sendMessage({request  : 'folder_subreddits', 
+                                     folder_id: oldId})
+        .then(response => {
+            testMessage(response.folder_subreddits);
+            popupManager.addingFolder(newId, response.folder_subreddits).then(() => {
+                popupManager.removingFolder(oldId);
+            });
         });
     });
 
+    //prompts are optional- there are defaults
+    //returns null on cancel
+    popupManager.getUniqueIdFromUser = function(prompt1, prompt2){
+        //configure prompts
+        if (!prompt1){
+            prompt1 = 'Enter a unique name: ';
+        }
+        if (!prompt2){
+            prompt2 = 'Name already exists. Enter a unique name: ';
+        }
+        //get name from user
+        var id = prompt(prompt1);
+        if (id === null){
+            return null;
+        }
+        while(popupManager.isValueInArray(id, popupManager.getIdPool())){
+            id = prompt(prompt2);
+            if (id === null){
+                return;
+            }
+        }
+        return id;
+    }
 
 
     //helper function

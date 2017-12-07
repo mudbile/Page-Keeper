@@ -65,6 +65,11 @@ var InitComptroller = function(){
             }
 
         } else if (message.request){
+            //for testing purposes
+            if (message.request === 'console'){
+                console.log(message.message);
+            }
+
             //return all subreddit folder ids
             if (message.request === 'folders'){
                 sendResponse({folders: comptroller.manager.getFolderIdArray()});
