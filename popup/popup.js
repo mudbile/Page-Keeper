@@ -48,9 +48,7 @@ var popupManager = (function(){
             popupManager.generatorButton.disabled = false;
             return;
         }
-        browser.runtime.sendMessage({action: 'generate_random_folder', 
-                                    active_id: activeId, 
-                                    seed: seed})
+        browser.runtime.sendMessage({action: 'generate_random_folder', seed: seed})
         .then(response => {
             popupManager.generatorButton.disabled = false;
             return popupManager.addingFolder(popupManager.getUniqueIdFromBase('generated'), response.subreddits);

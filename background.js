@@ -67,8 +67,7 @@ var randomGenerator = (function() {
 
     //call this from outside object
     //whill call for serendipitous subreddits and seed subreddits async, then adds them together
-    //atm currentSubreddits isn't needed
-    generator.generatingRandomFolder = function(currentSubreddits, seed){
+    generator.generatingRandomFolder = function(seed){
         return generator.initialisingValues().then(() => {
             var promises = new Array(2);
             //get both sets async
@@ -151,11 +150,6 @@ var randomGenerator = (function() {
         })
 
     }
-
-
-
-
-
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
     generator.gettingSerendipitySubreddits = function(numToGet){
@@ -318,9 +312,8 @@ var InitComptroller = function(){
     //both actions and requests return stuff. it's turned out not to be as helpful a distinction as i thought
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action){
-            if (message.action === 'generate_random_folder' && message.active_id && message.seed){
-                var currentSubreddits = comptroller.manager.getSubreddits(message.active_id);
-                var getting = randomGenerator.generatingRandomFolder(currentSubreddits, message.seed);
+            if (message.action === 'generate_random_folder' && message.seed){
+                var getting = randomGenerator.generatingRandomFolder(message.seed);
                 return getting.then(subreddits => {
                     return {subreddits: subreddits};
                 })
