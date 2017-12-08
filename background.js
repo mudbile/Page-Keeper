@@ -5,10 +5,15 @@
 // getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
 
 //also todo- store active selection in bg
-//          -make generator work when no active id
+//          - you'll get duplicates if a subreddit is in both groups
+//          -add weighting and stuff for comments search- exactly the same as subreddit seed search but use
+//              response.data.children[i].data.subreddit instead of response.data.children[i].data.display_name
+//          -make generator work when no active id (ie no folders yet)
+//          -go through and provide failure functions for promises (particularly high-level gui stuff)
+//          - settings page
 
 var randomGenerator = (function() {
-    https://www.reddit.com/search.json?q=<seed>&sort=relevance&type=sr/')); but get after random count
+    //https://www.reddit.com/search.json?q=<seed>&sort=relevance&type=sr/')); but get after random count
     
     var generator = {
         //weights are used to calculate how many of each to get - if total is 10 and one is 30 and the other 70, 
@@ -25,16 +30,22 @@ var randomGenerator = (function() {
         //seed word/phrase
         seed : null,
         //list of subreddit names to exclude from results
-        excludeList : null
+        excludeList : null,
+        //number of pages to grab for the seed search- dictates the size of the pool
+        num_seed_search_pages_to_get: null,
+        //can be 'relevance', 'new', 'top', etc.
+        seed_sort_by: null
     };
 
     //gets the local values (that the user will store on the settings page)
     generator.initialisingValues = function(seed){
         //local.get accepts an object that provdes default values if property isn't found
         var defaultValues = {
-            total_to_get: 10,
-            serendipity_weight: 5,
-            seed_weight: 5,
+            total_to_get: 100,
+            serendipity_weight: 1,
+            seed_weight: 0,
+            num_seed_search_pages_to_get: 4,
+            seed_sort_by: 'relevance',
             exclude_list: ['The_Donald']
         }
         return browser.storage.local.get(defaultValues).then(response => {
@@ -47,17 +58,99 @@ var randomGenerator = (function() {
             generator.numToGet.serendipity = generator.numToGet.total - generator.numToGet.seed;
             generator.seed = seed;
             generator.excludeList = response.exclude_list;
+            generator.numSeedSearchPagesToGet = response.num_seed_search_pages_to_get;
+            generator.seedSortBy = response.seed_sort_by;
         });
     }
 
     //call this from outside object
     //whill call for serendipitous subreddits and seed subreddits async, then adds them together
-    generator.generatingRandomFolder = function(currentSubreddits){
+    //atm currentSubreddits isn't needed
+    generator.generatingRandomFolder = function(currentSubreddits, seed){
         return generator.initialisingValues().then(() => {
-            return generator.gettingSerendipitySubreddits(generator.numToGet.total);
+            var promises = new Array(2);
+            //get both sets async
+            promises[0] = generator.gettingSerendipitySubreddits(generator.numToGet.serendipity);
+            promises[1] = generator.gettingSeededSubreddits(generator.numToGet.seed, seed);
+            //return them all as one array
+            return Promise.all(promises).then(groups => {return groups[0].concat(groups[1]);})
         })
-        //return currentSubreddits;
     };
+
+    //returns an array of as many subreddit names as it can, given the seed results and the
+    //value of generator.numSeedSearchPagesToGet
+    generator.gettingSeedNamesFromReddit = function(seed){
+        var url = 'https://www.reddit.com/search.json?q='+seed+'&sort='+generator.seedSortBy+'&type=sr';
+        //set initial values for the object, which will pass through the chain sequentially
+        var waitChain = Promise.resolve({possibilities: [], after: ''});
+        //attach links to the chain
+        for (var i = 0; i !== generator.numSeedSearchPagesToGet; ++i){
+            waitChain = waitChain.then(previousLinkResult => {
+                //a link will make the previousLinkResult.after property null
+                //if there are no more pages to get OR something's wrong wih the json
+                if (previousLinkResult.after === null){
+                    console.log('skipping link because ran out...');
+                    return previousLinkResult;
+                }
+                var fullURL = url +'&after='+previousLinkResult.after;
+                console.log(fullURL);
+                //get the json...
+                return generator.gettingRedditApiResponse(fullURL).then(response => {
+                    //check data
+                    var dataOkay = response && response.data 
+                                && response.data.children;
+                    if (dataOkay){
+                        //fill in the promised data
+                        response.data.children.forEach(child => {
+                            previousLinkResult.possibilities.push(child.data.display_name);
+                        })
+                        //response.data.after is either null or gives the code for the 'after' url setting
+                        previousLinkResult.after = response.data.after;
+                    } else {
+                        previousLinkResult.after = null;
+                    }
+                    //pass the result down the line
+                    return previousLinkResult;
+                });
+            });
+        }
+        //extract the names- they're what you actually want
+        return waitChain.then(lastLinkResult => {return lastLinkResult.possibilities;});
+    }
+
+    //randomly selects numToGet elements from an array of string possibilities
+    //could use splice but it's not efficient for large arrays (or is it?)
+    generator.chooseRandomElements = function(numToGet, possibilities){
+        var subreddits = [];
+        var chosenAlready = [];
+        //while there's still some to get and you still want some...
+        while(possibilities.length !== chosenAlready.length && subreddits.length !== numToGet){
+            //get a random elememt
+            var randIndex = Math.floor(Math.random() * possibilities.length);
+            var chosen = possibilities[randIndex];
+            //add it if it's good
+            if (chosenAlready.indexOf(chosen) === -1 && generator.excludeList.indexOf(chosen) === -1){
+                subreddits.push(chosen);
+            }
+            chosenAlready.push(chosen);
+        }
+        return subreddits;
+    }
+
+    //returns an array of promises for the seeded group of subreddits
+    generator.gettingSeededSubreddits = function(numToGet, seed){
+        //get and store first num_seed_search_pages_to_get pages of search results
+        return generator.gettingSeedNamesFromReddit(seed).then(possibilities => {
+            console.log(possibilities);
+            return generator.chooseRandomElements(numToGet, possibilities);
+        })
+
+    }
+
+
+
+
+
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
     generator.gettingSerendipitySubreddits = function(numToGet){
@@ -520,37 +613,3 @@ var InitSubredditFolderManager = function(){
 
 
 var comptroller = InitComptroller();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
