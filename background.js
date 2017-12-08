@@ -1,3 +1,157 @@
+//idea - get authors of content and go through them to other subreddits
+
+
+//working on the generator. it works for serendipitous subreddits. now we need to work on
+// getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
+
+//also todo- store active selection in bg
+//          -make generator work when no active id
+
+var randomGenerator = (function() {
+    https://www.reddit.com/search.json?q=<seed>&sort=relevance&type=sr/')); but get after random count
+    
+    var generator = {
+        //weights are used to calculate how many of each to get - if total is 10 and one is 30 and the other 70, 
+        //then one will get 3 and the other 10
+        weights : {
+            serendipity : null,
+            seed : null
+        },
+        numToGet : {
+            total : null,
+            serendipity : null,
+            seed : null
+        },
+        //seed word/phrase
+        seed : null,
+        //list of subreddit names to exclude from results
+        excludeList : null
+    };
+
+    //gets the local values (that the user will store on the settings page)
+    generator.initialisingValues = function(seed){
+        //local.get accepts an object that provdes default values if property isn't found
+        var defaultValues = {
+            total_to_get: 10,
+            serendipity_weight: 5,
+            seed_weight: 5,
+            exclude_list: ['The_Donald']
+        }
+        return browser.storage.local.get(defaultValues).then(response => {
+            generator.weights.serendipity = response.serendipity_weight;
+            generator.weights.seed = response.seed_weight;
+            generator.numToGet.total = response.total_to_get;
+            //calculates numbers to get from relative weights
+            generator.numToGet.seed = Math.floor(response.total_to_get * (response.seed_weight / 
+                                            (response.serendipity_weight + response.seed_weight)));
+            generator.numToGet.serendipity = generator.numToGet.total - generator.numToGet.seed;
+            generator.seed = seed;
+            generator.excludeList = response.exclude_list;
+        });
+    }
+
+    //call this from outside object
+    //whill call for serendipitous subreddits and seed subreddits async, then adds them together
+    generator.generatingRandomFolder = function(currentSubreddits){
+        return generator.initialisingValues().then(() => {
+            return generator.gettingSerendipitySubreddits(generator.numToGet.total);
+        })
+        //return currentSubreddits;
+    };
+
+    //returns a promised list of random subreddits similar to using the serendipity button on reddit
+    generator.gettingSerendipitySubreddits = function(numToGet){
+        //array is filled iwth promises that return a subreddit name
+        var subredditPromises = new Array(numToGet);
+        for (var i = 0; i != numToGet; ++i){              //this actually returns a random comment from a random sub
+            subredditPromises[i] = generator.gettingRedditApiResponse('https://www.reddit.com/random/.json?&limit=1/')
+                                            .then(response => {
+                                                //check data
+                                                var dataOkay = response && response[0] && response[0].data 
+                                                    && response[0].data.children && response[0].data.children[0]
+                                                    && response[0].data.children[0].data.subreddit;
+                                                if (dataOkay){
+                                                    //fill in the promised data
+                                                    return response[0].data.children[0].data.subreddit;
+                                                } else {
+                                                    return Promise.reject('invalid json from api');
+                                                }
+                                            });
+        }
+        //now we need to ensure there are no duplicates and no excluded subreddits
+        //but we still need to fill the quota, so there's recursion
+        return Promise.all(subredditPromises).then(subreddits => {
+            var okaySubredits = generator.cleanSubredditArray(subreddits);
+            //the quota being filled is our base condition
+            if (okaySubredits.length === numToGet){
+                return okaySubredits;
+            //otherwise concat the results of a recursive call asking 
+            //for the number of subreddits still to get, and return that 
+            } else {                
+                var stillToGet = numToGet - okaySubredits.length;
+                return generator.gettingSerendipitySubreddits(stillToGet).then(moreSubreddits => {
+                    return okaySubredits.concat(moreSubreddits);
+                });
+            }
+        });
+    }
+
+    //returns new array with no duplicates and none that are in excludeList
+    generator.cleanSubredditArray = function(subreddits){
+        var okaySubreddits = [];
+        for (var i = 0; i != subreddits.length; ++i){
+            var checkingThisSubreddit = subreddits[i];
+            if (generator.excludeList.indexOf(checkingThisSubreddit) === -1 
+                &&     okaySubreddits.indexOf(checkingThisSubreddit) === -1){
+                okaySubreddits.push(checkingThisSubreddit);
+            }
+        }
+        return okaySubreddits;
+    }
+
+    //given an api url(e.g. https://www.reddit.com/api/multi/user/deltaprogress/m/artncomics/.json)
+    //returns the decoded json object found there
+    generator.gettingRedditApiResponse = function(apiURL){
+        return fetch(apiURL).then(response => {
+            return response.json();
+        }); 
+    };
+
+    return generator;
+})();
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //highest level controller
 //tabs and browser message handling
 var InitComptroller = function(){
@@ -63,6 +217,17 @@ var InitComptroller = function(){
     //both actions and requests return stuff. it's turned out not to be as helpful a distinction as i thought
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action){
+            if (message.action === 'generate_random_folder' && message.active_id && message.seed){
+                var currentSubreddits = comptroller.manager.getSubreddits(message.active_id);
+                var getting = randomGenerator.generatingRandomFolder(currentSubreddits, message.seed);
+                return getting.then(subreddits => {
+                    return {subreddits: subreddits};
+                })
+                //console.log('here: ' + );
+                //sendResponse({subreddits: randomGenerator.generateRandomFolder(currentSubreddits, message.seed)});
+            }
+
+
               //remove subreddits from a specific folder
             if (message.action === 'remove_subreddits' && message.folder_id && message.subreddits){
                 //removeSubreddits doesnt actually change anything- just returns a hypothetical array
@@ -100,6 +265,12 @@ var InitComptroller = function(){
         } else if (message.request){
             //for testing purposes
             if (message.request === 'console'){
+            }
+
+            if (message.request === 'current_url'){
+                return comptroller.gettingCurrentTab().then(tab => {
+                    return ({current_url: tab.url});
+                });
             }
 
             //go through reddit api
@@ -274,6 +445,9 @@ var InitSubredditFolderManager = function(){
 
     //get subreddits of a specific folder
     manager.getSubreddits = function(folderId){
+        if (!folderId){
+            return [];
+        }
         return this.getFolderById(folderId).subreddits;
     };
     //returns a specific folder object 
@@ -346,6 +520,36 @@ var InitSubredditFolderManager = function(){
 
 
 var comptroller = InitComptroller();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

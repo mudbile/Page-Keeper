@@ -32,8 +32,38 @@ var popupManager = (function(){
     popupManager.folderDetailsDiv =     document.getElementById('subscription-details');
     popupManager.currentPageInclusionToggle = document.getElementById('toggle-for-current');
     popupManager.folderTableDiv =       document.getElementById('subscription-table-div');
-
+    popupManager.generatorButton = document.getElementById('folder-generate-random');
     //**********listeners***************** */
+    popupManager.generatorButton.addEventListener('click', eventContext => {
+        popupManager.generatorButton.disabled = true;
+        var activeId = popupManager.getActiveFolderId();
+        var seed = prompt('Enter a seed word');
+        if (!seed){
+            popupManager.generatorButton.disabled = false;
+            return;
+        }
+        browser.runtime.sendMessage({action: 'generate_random_folder', 
+                                    active_id: activeId, 
+                                    seed: seed})
+        .then(response => {
+            popupManager.generatorButton.disabled = false;
+            return popupManager.addingFolder(popupManager.getUniqueIdFromBase('generated'), response.subreddits);
+        })
+    });
+
+    //returns the unique id <base>_<i> where base is given and i is minimum tpo make it unique
+    //assumes less than 1000 with same base
+    popupManager.getUniqueIdFromBase = function(base){
+        var i = 0;
+        var pool = popupManager.getIdPool();
+        var potentialId = base+'_'+("000" + i).slice(-3);
+        while(popupManager.isValueInArray(potentialId, pool)){
+            ++i;
+            potentialId = base+'_'+("000" + i).slice(-3);
+        }
+        return potentialId;
+    }
+
     //refreshes the subreddit table when a new folder selection is made
     popupManager.folderSelections.addEventListener('change', eventContext => {
         popupManager.setActiveFolder(popupManager.getActiveFolderId());
@@ -234,11 +264,9 @@ var popupManager = (function(){
         }
     };
 
-    //all requests to get folder subreddits go through this (gettingActiveFolderSubreddits is a wrapper)
-    //sends message to get folder subreddits from disk if it's not cached active folder's
-    //updates the activeFolderSubreddits cache if it is for the active folder
+    //all requests to get folder subreddits go through this
+    //sends message to get folder subreddits from disk
     popupManager.gettingFolderSubreddits = function(id){
-       
         var sending = browser.runtime.sendMessage({request : 'folder_subreddits', folder_id : id});
         return sending.then(response => {
             if (response.folder_subreddits){
@@ -346,7 +374,22 @@ var popupManager = (function(){
         });
     }
 
-    
+    testMessage('yarr');
+    popupManager.gettingCurrentURL = function(){
+        return browser.runtime.sendMessage({request: 'current_url'}).then(response => {
+            return response.current_url;
+        });
+    }
+
+    popupManager.enableGeneratorButtonIfAllowed = function(){
+        popupManager.gettingCurrentURL().then(url => {
+            if (url && url.startsWith('https://www.reddit.com')){
+                popupManager.generatorButton.disabled = false;
+            } else {
+                popupManager.generatorButton.disabled = true;
+            }   
+        });
+    }
 
     //called by remove buttons in the table of subreddits
     //rebuilds whole table - could implement a caching system on this end
@@ -430,7 +473,7 @@ var popupManager = (function(){
                            popupManager.setActiveFolder(popupManager.getActiveFolderId());
                         })
     }
-
+    popupManager.enableGeneratorButtonIfAllowed();
     return popupManager;
 })();
 
