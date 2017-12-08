@@ -17,6 +17,7 @@ window.addEventListener('load', eventContext => {
 
 var popupManager = (function(){
     var popupManager = {};
+
     popupManager.baseURL = 'https://www.reddit.com/r/';
     //store all the elements
     popupManager.folderSelections = document.getElementById('folder-selections');
@@ -94,12 +95,10 @@ var popupManager = (function(){
 
     //makes a copy of a folder, giving it the id: copyToId, and updates ui
     popupManager.duplicatingFolder = function(copyFromId, copyToId){
-        return browser.runtime.sendMessage({request  : 'folder_subreddits', 
-                                            folder_id: copyFromId})
-        .then(response => {
-            
-            return popupManager.addingFolder(copyToId, response.folder_subreddits);
-        });
+        var sending = popupManager.gettingFolderSubreddits(copyFromId);
+        return sending.then(folderSubreddits => {
+            return popupManager.addingFolder(copyToId, folderSubreddits);
+        })
     }
 
     //user can type in the textbox to add any string. no error checking. probably dangerous
@@ -228,14 +227,27 @@ var popupManager = (function(){
         if (subreddits){
             this.updatePopup(subreddits);
         } else {
-            var sending = browser.runtime.sendMessage({request : 'folder_subreddits', folder_id : id});
-            return sending.then(response => {   
-                if (response.folder_subreddits){
-                   this.updatePopup(response.folder_subreddits);
-                }
+            var sending = popupManager.gettingFolderSubreddits(id);
+            return sending.then(folderSubreddits => {   
+                this.updatePopup(folderSubreddits);
             });
         }
-    }
+    };
+
+    //all requests to get folder subreddits go through this (gettingActiveFolderSubreddits is a wrapper)
+    //sends message to get folder subreddits from disk if it's not cached active folder's
+    //updates the activeFolderSubreddits cache if it is for the active folder
+    popupManager.gettingFolderSubreddits = function(id){
+       
+        var sending = browser.runtime.sendMessage({request : 'folder_subreddits', folder_id : id});
+        return sending.then(response => {
+            if (response.folder_subreddits){
+                return response.folder_subreddits;
+             } else {
+                 return Promise.reject('folder_subreddits property of response is falsey');
+             }
+        });
+    };
 
     
     //returns null if no folders
@@ -343,7 +355,9 @@ var popupManager = (function(){
         var sending = browser.runtime.sendMessage({ action       : 'remove_subreddits',
                                                     folder_id    : this.getActiveFolderId(),
                                                     subreddits   : subreddits});
-        //build anew - really we know what subreddits are left, so this should be done without messaging
+        //build anew - really we know what subreddits are left
+        //var originalSubreddits = 
+        //var subredditsLeft = subreddits.filter(elem => popupManager.isValueInArray(elem, originalSubreddits));
         return sending.then(response => {
             if (response.subreddits){
                 this.updatePopup(response.subreddits);
@@ -361,12 +375,11 @@ var popupManager = (function(){
         var sending = browser.runtime.sendMessage({ action       : 'add_subreddits',
                                                     folder_id    : this.getActiveFolderId(),
                                                     subreddits   : subreddits});
-        //build anew - really we know what subreddits there are now, so this should be done without messaging
+        //build anew - really we know what subreddits there are now, so we don't wait for sending
         return sending.then(response => {
-            if (response.subreddits){
-                this.updatePopup(response.subreddits);
-            }
-        });
+            this.updatePopup(response.subreddits);
+        })
+        
     }
 
 

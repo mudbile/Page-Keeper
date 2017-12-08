@@ -27,7 +27,7 @@ var anonSays = (function(){
     //hide list of included subreddits on the multi page
     retObject.hideSideFrame = function(){
         var url = window.location.href.toLowerCase();
-        var subredditsFromThusURL = this.getSubredditsFromWithinUrl()
+        var subredditsFromThusURL = this.getSubredditsFromWithinUrl(url)
         if (subredditsFromThusURL && subredditsFromThusURL.length !== 1){
             document.querySelector('div.sidecontentbox').style.display = 'none';
         }
@@ -69,3 +69,7 @@ var anonSays = (function(){
     });
     return retObject;
 })();
+
+
+
+anonSays.hideSideFrame();

@@ -246,13 +246,13 @@ var InitSubredditFolderManager = function(){
     //does not save to disk
     //returns the folder object
     manager.addFolder = function(id, initalSubreddits){
-        //check args
-        if (!id){
-            throw "argument: 'id' required";
-        }
-        if (!manager.isUniqueId(id)){
-            throw "id must be unique";
-        }
+        // //check args
+        // if (!id){
+        //     throw "argument: 'id' required";
+        // }
+        // if (!manager.isUniqueId(id)){
+        //     throw "id must be unique";
+        // }
         if (!initalSubreddits){
             initalSubreddits = [];
         }
@@ -317,7 +317,6 @@ var InitSubredditFolderManager = function(){
         Object.keys(this.folders).forEach(id => {
             dict[id] = this.folders[id].subreddits;
         });
-        console.log(dict);
         return browser.storage.local.set({'manager_set_dict': dict});
         
     };
