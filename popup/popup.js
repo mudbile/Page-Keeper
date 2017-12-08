@@ -6,11 +6,17 @@ var testMessage = function(message){
 
 
 window.addEventListener('unload', eventContext => {
+    browser.runtime.sendMessage({action: 'store_active_id', id: popupManager.getActiveFolderId()});
     //remember active folder here
     //browser.runtime.sendMessage({request: 'console', message: 'would save here}'});
 });
 window.addEventListener('load', eventContext => {
-    //rememebr actgive folder here
+    browser.runtime.sendMessage({request: 'stored_active_id'}).then(response => {
+        testMessage('setting');
+        if (response.id){
+            popupManager.setActiveFolder(response.id);
+        }
+    })
 });
 
 

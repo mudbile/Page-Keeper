@@ -5,6 +5,8 @@
 // getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
 
 //also todo- store active selection in bg
+//          - weighting system needs work- still running seeded when set to 0
+//          - lotta duplicates showing up
 //          - you'll get duplicates if a subreddit is in both groups
 //          -add weighting and stuff for comments search- exactly the same as subreddit seed search but use
 //              response.data.children[i].data.subreddit instead of response.data.children[i].data.display_name
@@ -139,6 +141,9 @@ var randomGenerator = (function() {
 
     //returns an array of promises for the seeded group of subreddits
     generator.gettingSeededSubreddits = function(numToGet, seed){
+        if (numToGet === 0){
+            return [];
+        }
         //get and store first num_seed_search_pages_to_get pages of search results
         return generator.gettingSeedNamesFromReddit(seed).then(possibilities => {
             console.log(possibilities);
@@ -154,6 +159,9 @@ var randomGenerator = (function() {
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
     generator.gettingSerendipitySubreddits = function(numToGet){
+        if (numToGet === 0){
+            return [];
+        }
         //array is filled iwth promises that return a subreddit name
         var subredditPromises = new Array(numToGet);
         for (var i = 0; i != numToGet; ++i){              //this actually returns a random comment from a random sub
@@ -305,7 +313,7 @@ var InitComptroller = function(){
     }
 
     //message listener controller
-    //you can either return info by sendmessage or by returning a promise that returns some info
+    //you can either return info by sendresponse or by returning a promise that returns some info
     //NOTE: error checking is done client side before seding a message through.
     //both actions and requests return stuff. it's turned out not to be as helpful a distinction as i thought
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -320,6 +328,12 @@ var InitComptroller = function(){
                 //sendResponse({subreddits: randomGenerator.generateRandomFolder(currentSubreddits, message.seed)});
             }
 
+            //note: this is used for the popup unload- this doesn't track the active id while the popup
+            //is open
+            if (message.action === 'store_active_id' && message.id){
+                console.log('storing:' + message.id);
+                comptroller.manager.storedActiveId = message.id;
+            }
 
               //remove subreddits from a specific folder
             if (message.action === 'remove_subreddits' && message.folder_id && message.subreddits){
@@ -371,6 +385,12 @@ var InitComptroller = function(){
                 return comptroller.gettingMultiSubreddits(message.url).then(response => {
                     return {multi_subreddits: response};
                 });
+            }
+
+            //note: this is used for the popup onload- this doesn't track the active id while the popup
+            //is open
+            if (message.request === 'stored_active_id'){
+                sendResponse({id: comptroller.manager.storedActiveId})
             }
 
             //return all subreddit folder ids
@@ -490,6 +510,8 @@ var InitSubredditFolderManager = function(){
     var manager = {};
     //this gets filled in at the end from disk
     manager.folders = {};
+    //if popup gets null id, will set to first one (if there is one)
+    manager.storedActiveId = null
 
     manager.getNumberOfFolders = function(){
         return Object.keys(this.folders).length;
