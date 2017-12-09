@@ -5,7 +5,6 @@
 // getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
 
 //also todo- store active selection in bg
-//          - lotta duplicates showing up
 //          - you'll get duplicates if a subreddit is in both groups
 //          -add weighting and stuff for comments search- exactly the same as subreddit seed search but use
 //              response.data.children[i].data.subreddit instead of response.data.children[i].data.display_name
@@ -47,7 +46,7 @@ var randomGenerator = (function() {
             seed_weight: 0,
             num_seed_search_pages_to_get: 4,
             seed_sort_by: 'relevance',
-            exclude_list: ['The_Donald']
+            exclude_list: ['news', 'interestingasfuck', 'todayilearned', 'gaming', 'MurderedByWords', 'MemeEconomy', 'OldSchoolCool', 'mildlyinteresting', 'whitepeoplegifs', 'aww', 'The_Donald', 'technology', ]
         }
         return browser.storage.local.get(defaultValues).then(response => {
             generator.weights.serendipity = response.serendipity_weight;
@@ -205,7 +204,7 @@ var randomGenerator = (function() {
                 var stillToGet = numToGet - okaySubredits.length;
                 console.log('need ' +stillToGet+ ' more...');
                 console.log(okaySubredits);
-                return generator.gettingSerendipitySubreddits(stillToGet, moreExcludedSubreddits)
+                return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits)
                                 .then(moreSubreddits => {
                                     console.log('returning concatenated: ');
                                     //console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
