@@ -156,6 +156,8 @@ var randomGenerator = (function() {
         if (!moreExcludedSubreddits){
             moreExcludedSubreddits = [];
         }
+        console.log('excluded list: ');
+        console.log(moreExcludedSubreddits);
         if (numToGet === 0){
             return [];
         }
@@ -191,7 +193,7 @@ var randomGenerator = (function() {
             console.log('got: ');
             console.log(subreddits);
             var okaySubredits = generator.cleanSubredditArray(subreddits, moreExcludedSubreddits);
-            console.log('after clean: ');
+            console.log('after clean (cmp excluded list): ');
             console.log(okaySubredits);
             //the quota being filled is our base condition
             if (okaySubredits.length === numToGet){
@@ -204,9 +206,9 @@ var randomGenerator = (function() {
                 var stillToGet = numToGet - okaySubredits.length;
                 console.log('need ' +stillToGet+ ' more...');
                 console.log(okaySubredits);
-                return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits)
+                return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits.concat(moreExcludedSubreddits))
                                 .then(moreSubreddits => {
-                                    console.log('returning concatenated: ');
+                                    console.log('returning concatenated (cmp excluded list): ');
                                     //console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
                                     console.log(okaySubredits.concat(moreSubreddits));
                                     //return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
