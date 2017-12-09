@@ -48,13 +48,13 @@ var randomGenerator = (function() {
     generator.initialisingValues = function(seed){
         //local.get accepts an object that provdes default values if property isn't found
         var defaultValues = {
-            total_to_get: 100,
-            serendipity_weight: 0,
+            total_to_get: 50,
+            serendipity_weight: 1,
             seed_weight: 1,
-            num_seed_search_pages_to_get: 30,
-            seed_sort_by: 'relevance',
+            num_seed_search_pages_to_get: 20,
+            seed_sort_by: 'new',
             user_subscriber_limit: 0,
-            user_active_limit: 70,
+            user_active_limit: 1000,
             nsfw_restricted: true,
             exclude_list: []
             //exclude_list: ['news', 'interestingasfuck', 'todayilearned', 'gaming', 'MurderedByWords', 'MemeEconomy', 'OldSchoolCool', 'mildlyinteresting', 'whitepeoplegifs', 'aww', 'The_Donald', 'technology', ]
@@ -86,9 +86,29 @@ var randomGenerator = (function() {
             promises[0] = generator.gettingSerendipitySubreddits(generator.numToGet.serendipity);
             promises[1] = generator.gettingSeededSubreddits(generator.numToGet.seed, seed);
             //return them all as one array
-            return Promise.all(promises).then(groups => {return groups[0].concat(groups[1]);})
+            return Promise.all(promises).then(groups => {
+                console.log(groups[0]);
+                console.log(groups[1]);
+                //add the ones from seeds that aren't already in serendip group
+                var subreddits = groups[0];
+                for (var i = 0; i != groups[1].length; ++i){
+                    console.log('here');
+                    if (subreddits.indexOf(groups[1][i]) === -1){
+                        console.log('here1');
+                        subreddits.push(groups[1][i]);
+                    }
+                }
+                console.log('and finished:');
+                console.log(subreddits);
+                return subreddits;
+            })
         })
     };
+
+    //pausses promise chain for delay ms, then returns the value it was given as a promise
+    // generator.pausing = function(delay, value) {
+    //     return new Promise(resolve => setTimeout(resolve, delay, value));
+    // }
 
     //returns an array of as many subreddit names as it can, given the seed results and the
     //value of generator.numSeedSearchPagesToGet
@@ -114,9 +134,10 @@ var randomGenerator = (function() {
                 //get the json, from that the subreddits that pass restrictions test...
                 return generator.gettingRedditApiResponse(fullURL).then(response => {
                     //check data
-                    var dataOkay = response && response.data 
+                    var dataOkay = response && response.data && response.data.after
                                 && response.data.children;
                     if (dataOkay){
+                        console.log(response);
                         var subredditPromises = [];
                         //fill in the promised data
                         response.data.children.forEach(child => {
@@ -140,38 +161,52 @@ var randomGenerator = (function() {
                             return previousLinkResult;
                         });
                     } else {
-                        previousLinkResult.after = null;
+                        console.log('data not okay:');
+                        //console.log(data);
+                        //previousLinkResult.after = null;
                         return previousLinkResult;
                     }                    
                 });
-            });
+            });//.then(previousLinkResult => generator.pausing(2000, previousLinkResult))
         }
         //extract the names- they're what you actually want
         return waitChain.then(lastLinkResult => {return lastLinkResult.possibilities;});
     }
 
+    //This function returns a random number between [min, max)
+    //max and min must be given as integers
+    generator.randBetween = function(min, max){
+        return Math.floor(Math.random() * (max - min)) + min;
+    };
+
+    //fisher-yates
+    generator.shuffleArrayInPlace = function(array){
+        for(var i = 0; i != array.length - 2; ++i){
+            var j = generator.randBetween(i, array.length);
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+    }
+
     //randomly selects numToGet elements from an array of string possibilities
-    //could use splice but it's not efficient for large arrays (or is it?)
-    //returns new array
-    generator.chooseRandomElements = function(numToGet, possibilities, excludeList){
-        console.log('in function. numtoget: ' + numToGet+ ' from '+ possibilities.length);
-        if (!excludeList){
-            excludeList = generator.excludeList;
+    //returns new array but does shuffle given array
+    generator.chooseRandomElements = function(numToGet, possibilities){
+        console.log('coming into function. num to get: ' + numToGet+ ' of '+ possibilities.length);
+        console.log(possibilities);
+
+        if (numToGet >= possibilities.length){
+            return possibilities;
         }
-        var subreddits = [];
-        var chosenAlready = [];
-        //while there's still some to get and you still want some...
-        while(possibilities.length !== chosenAlready.length && subreddits.length !== numToGet){
-            //get a random elememt
-            var randIndex = Math.floor(Math.random() * possibilities.length);
-            var chosen = possibilities[randIndex];
-            //add it if it's good
-            if (chosenAlready.indexOf(chosen) === -1 && excludeList.indexOf(chosen) === -1){
-                subreddits.push(chosen);
-            }
-            chosenAlready.push(chosen);
-        }
+
+        //shuffle the Array
+        generator.shuffleArrayInPlace(possibilities);
+        //reduce numToGet if need be
+        
+        //slice a chunk from the shuffled array [begin, end)
+        var subreddits = possibilities.slice(0, numToGet);
         console.log('coming out of function. numgot: ' + subreddits.length);
+        console.log(subreddits);
         return subreddits;
     }
 
