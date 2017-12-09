@@ -51,10 +51,10 @@ var randomGenerator = (function() {
             total_to_get: 100,
             serendipity_weight: 0,
             seed_weight: 1,
-            num_seed_search_pages_to_get: 4,
+            num_seed_search_pages_to_get: 30,
             seed_sort_by: 'relevance',
             user_subscriber_limit: 0,
-            user_active_limit: 1000,
+            user_active_limit: 70,
             nsfw_restricted: true,
             exclude_list: []
             //exclude_list: ['news', 'interestingasfuck', 'todayilearned', 'gaming', 'MurderedByWords', 'MemeEconomy', 'OldSchoolCool', 'mildlyinteresting', 'whitepeoplegifs', 'aww', 'The_Donald', 'technology', ]
@@ -92,11 +92,15 @@ var randomGenerator = (function() {
 
     //returns an array of as many subreddit names as it can, given the seed results and the
     //value of generator.numSeedSearchPagesToGet
+    //there should be no duplicates, so we dont call cleanArray, just checkAgainstRestrictions
     generator.gettingSeedNamesFromReddit = function(seed){
         var url = 'https://www.reddit.com/search.json?q='+seed+'&sort='+generator.seedSortBy+'&type=sr';
         //set initial values for the object, which will pass through the chain sequentially
         var waitChain = Promise.resolve({possibilities: [], after: ''});
         //attach links to the chain
+        //loop may add many more links than that many which return after === null, but because
+        //setting the after attribute happens async, there's no good way around it- it will just quickly
+        //pass on the results anyway
         for (var i = 0; i !== generator.numSeedSearchPagesToGet; ++i){
             waitChain = waitChain.then(previousLinkResult => {
                 //a link will make the previousLinkResult.after property null
@@ -107,23 +111,38 @@ var randomGenerator = (function() {
                 }
                 var fullURL = url +'&after='+previousLinkResult.after;
                 console.log(fullURL);
-                //get the json...
+                //get the json, from that the subreddits that pass restrictions test...
                 return generator.gettingRedditApiResponse(fullURL).then(response => {
                     //check data
                     var dataOkay = response && response.data 
                                 && response.data.children;
                     if (dataOkay){
+                        var subredditPromises = [];
                         //fill in the promised data
                         response.data.children.forEach(child => {
-                            previousLinkResult.possibilities.push(child.data.display_name);
-                        })
-                        //response.data.after is either null or gives the code for the 'after' url setting
-                        previousLinkResult.after = response.data.after;
+                            //will add a null if it fails
+                            subredditPromises.push(generator.checkingSubredditAgainstRestrictions(child.data.display_name));
+                            //check restrictions- if this fails we still want to keep going with others
+                        });
+                        //wait for all the subreddits to be checked and filter them.
+                        //elem === null means they failed.
+                        return Promise.all(subredditPromises).then(results => {
+                            console.log('before filtering nulls: ');
+                            console.log(results);
+                            var filtered = results.filter(elem => elem !== null);
+                            console.log('after filtering nulls: ');
+                            console.log(filtered);
+                            console.log('attaching...');
+                            console.log(previousLinkResult.possibilities.concat(filtered));
+                            previousLinkResult.possibilities = previousLinkResult.possibilities.concat(filtered);
+                            //response.data.after is either null or gives the code for the 'after' url setting
+                            previousLinkResult.after = response.data.after;
+                            return previousLinkResult;
+                        });
                     } else {
                         previousLinkResult.after = null;
-                    }
-                    //pass the result down the line
-                    return previousLinkResult;
+                        return previousLinkResult;
+                    }                    
                 });
             });
         }
@@ -163,6 +182,7 @@ var randomGenerator = (function() {
         }
         //get and store first num_seed_search_pages_to_get pages of search results
         return generator.gettingSeedNamesFromReddit(seed).then(possibilities => {
+            console.log('possibililities')
             console.log(possibilities);
             return generator.chooseRandomElements(numToGet, possibilities);
         })
@@ -170,7 +190,7 @@ var randomGenerator = (function() {
     }
 
     //returns id on pass, null on fail (null so it's removed on subreddit array clean step)
-    //the nsfw check should be done while building the url for search: add nsfw%3Ano to restrict
+    // checks exclusion list and restrictions
     //but it's kept here for completeness for other methods
     generator.checkingSubredditAgainstRestrictions = function(id){
         var gettingInfo = generator.gettingRedditApiResponse('https://www.reddit.com/r/'+id+'/about/.json');
@@ -181,7 +201,7 @@ var randomGenerator = (function() {
                 console.log(info.data.subscribers + ' vs ' + generator.userSubscriberLimit);
                 console.log(info.data.accounts_active + ' vs ' + generator.userActiveLimit);
             }
-            if (info.data
+            if (info.data && generator.excludeList.indexOf(id) === -1
                 && (info.data.over18 === false || generator.nsfw_restricted === true)
                 && (info.data.subscribers < generator.userSubscriberLimit || generator.userSubscriberLimit <= 0)
                 && (info.data.accounts_active < generator.userActiveLimit || generator.userActiveLimit <= 0)
@@ -269,7 +289,7 @@ var randomGenerator = (function() {
     }
 
     //returns new array with no duplicates and none that are in excludeList
-    //OR in the optional moreExcludedSubreddits
+    //OR in the optional moreExcludedSubreddits. removes null entries too
     generator.cleanSubredditArray = function(subreddits, moreExcludedSubreddits){
         if (!moreExcludedSubreddits){
             moreExcludedSubreddits = [];
