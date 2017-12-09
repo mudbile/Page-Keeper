@@ -483,9 +483,3 @@ var popupManager = (function(){
 
 
 popupManager.initialising();
-
-
-
-
-
-

@@ -7,7 +7,7 @@ var anonSays = (function(){
     retObject.subreddits = null;
     
     retObject.gettingCurrentPageSubreddits = function(){
-        var url = window.location.href.toLowerCase();
+        var url = window.location.href;
         var subredditsFromThusURL = this.getSubredditsFromWithinUrl(url);
         if (subredditsFromThusURL){
             this.subreddits = subredditsFromThusURL;
@@ -26,7 +26,7 @@ var anonSays = (function(){
     
     //hide list of included subreddits on the multi page
     retObject.hideSideFrame = function(){
-        var url = window.location.href.toLowerCase();
+        var url = window.location.href;
         var subredditsFromThusURL = this.getSubredditsFromWithinUrl(url)
         if (subredditsFromThusURL && subredditsFromThusURL.length !== 1){
             document.querySelector('div.sidecontentbox').style.display = 'none';

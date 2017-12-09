@@ -5,7 +5,6 @@
 // getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
 
 //also todo- store active selection in bg
-//          - weighting system needs work- still running seeded when set to 0
 //          - lotta duplicates showing up
 //          - you'll get duplicates if a subreddit is in both groups
 //          -add weighting and stuff for comments search- exactly the same as subreddit seed search but use
@@ -176,16 +175,26 @@ var randomGenerator = (function() {
         //now we need to ensure there are no duplicates and no excluded subreddits
         //but we still need to fill the quota, so there's recursion
         return Promise.all(subredditPromises).then(subreddits => {
+            console.log('got: ');
+            console.log(subreddits);
             var okaySubredits = generator.cleanSubredditArray(subreddits);
+            console.log('after clean: ');
+            console.log(okaySubredits);
             //the quota being filled is our base condition
             if (okaySubredits.length === numToGet){
+                console.log('returning: ');
+                console.log(okaySubredits);
                 return okaySubredits;
             //otherwise concat the results of a recursive call asking 
             //for the number of subreddits still to get, and return that 
             } else {                
                 var stillToGet = numToGet - okaySubredits.length;
+                console.log('need ' +stillToGet+ ' more...');
+                console.log(okaySubredits);
                 return generator.gettingSerendipitySubreddits(stillToGet).then(moreSubreddits => {
-                    return okaySubredits.concat(moreSubreddits);
+                    console.log('returning concatenated: ');
+                    console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
+                    return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
                 });
             }
         });
@@ -442,7 +451,8 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
     }
 
     var subredditFolder = {};
-    subredditFolder.subreddits = initalSubreddits.filter(elem => true).sort();
+    //get a sorted copy of all the subreddits
+    subredditFolder.subreddits = subredditFolderManager.sortNames(initalSubreddits.filter(elem => true));
 
     //immutable properties
     Object.defineProperty(subredditFolder, 'manager', {
@@ -472,7 +482,7 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
     subredditFolder.removeSubreddits = function(subredditNames){
         //copies array, filtering out the removed ones
         var temp = this.subreddits.filter(subreddit => subredditNames.indexOf(subreddit) == -1);
-        this.subreddits = temp.sort();
+        this.subreddits = subredditFolderManager.sortNames(temp);
         return this.subreddits
     }
     //won't add an extra one if entry already exists
@@ -486,7 +496,7 @@ var SubredditFolderFactory = function(subredditFolderManager, id, initalSubreddi
                 temp.push(subredditNames[i]);
             }
         }
-        this.subreddits = temp.sort();
+        this.subreddits = subredditFolderManager.sortNames(temp);
         return this.subreddits;
     }
 
@@ -518,6 +528,16 @@ var InitSubredditFolderManager = function(){
     manager.isUniqueId = function(id){
         return manager.getFolderIdArray().indexOf(id) === -1;
     };
+
+    //sorts subreddits, disregarding case
+    //use this always when sorting
+    //alters subreddits array and also returns it
+    manager.sortNames = function(subreddits){
+        subreddits.sort(function (a, b) {
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+        return subreddits;
+    }
 
 
     //creates and adds a new subreddit folder
