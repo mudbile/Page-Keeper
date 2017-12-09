@@ -151,24 +151,38 @@ var randomGenerator = (function() {
     }
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
-    generator.gettingSerendipitySubreddits = function(numToGet){
+    //moreExcludedSubreddits iis used to pass the growing list of subreddits down the recusion line,
+    //so the child can reject subreddits already got
+    generator.gettingSerendipitySubreddits = function(numToGet, moreExcludedSubreddits){
+        if (!moreExcludedSubreddits){
+            moreExcludedSubreddits = [];
+        }
         if (numToGet === 0){
             return [];
         }
         //array is filled iwth promises that return a subreddit name
         var subredditPromises = new Array(numToGet);
-        for (var i = 0; i != numToGet; ++i){              //this actually returns a random comment from a random sub
+        for (var i = 0; i != numToGet; ++i){             
+            //returns null for failed names/json retreivals
+            //the gettingRedditApiResponse call actually returns a random comment from a random sub
+            //because for some reason 'https://www.reddit.com/r/random/.json?&limit=1/' gives x-origin error
             subredditPromises[i] = generator.gettingRedditApiResponse('https://www.reddit.com/random/.json?&limit=1/')
                                             .then(response => {
                                                 //check data
                                                 var dataOkay = response && response[0] && response[0].data 
                                                     && response[0].data.children && response[0].data.children[0]
-                                                    && response[0].data.children[0].data.subreddit;
+                                                    && response[0].data.children[0].data.subreddit
+                                                    //fail for those weird pseudo-dubreddits that are actually user accounts
+                                                    && !response[0].data.children[0].data
+                                                                  .subreddit_name_prefixed.startsWith('u/');
                                                 if (dataOkay){
-                                                    //fill in the promised data
+                                                    //fill in the promised data - a subreddit name
+                                                    console.log(response);
+                                                    console.log(response[0].data.children[0].data.subreddit);
                                                     return response[0].data.children[0].data.subreddit;
                                                 } else {
-                                                    return Promise.reject('invalid json from api');
+                                                    console.log('failed: ' + response[0].data.children[0].data.subreddit);
+                                                    return null;
                                                 }
                                             });
         }
@@ -177,7 +191,7 @@ var randomGenerator = (function() {
         return Promise.all(subredditPromises).then(subreddits => {
             console.log('got: ');
             console.log(subreddits);
-            var okaySubredits = generator.cleanSubredditArray(subreddits);
+            var okaySubredits = generator.cleanSubredditArray(subreddits, moreExcludedSubreddits);
             console.log('after clean: ');
             console.log(okaySubredits);
             //the quota being filled is our base condition
@@ -191,21 +205,30 @@ var randomGenerator = (function() {
                 var stillToGet = numToGet - okaySubredits.length;
                 console.log('need ' +stillToGet+ ' more...');
                 console.log(okaySubredits);
-                return generator.gettingSerendipitySubreddits(stillToGet).then(moreSubreddits => {
-                    console.log('returning concatenated: ');
-                    console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
-                    return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
+                return generator.gettingSerendipitySubreddits(stillToGet, moreExcludedSubreddits)
+                                .then(moreSubreddits => {
+                                    console.log('returning concatenated: ');
+                                    //console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
+                                    console.log(okaySubredits.concat(moreSubreddits));
+                                    //return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
+                                    return okaySubredits.concat(moreSubreddits);
                 });
             }
         });
     }
 
     //returns new array with no duplicates and none that are in excludeList
-    generator.cleanSubredditArray = function(subreddits){
+    //OR in the optional moreExcludedSubreddits
+    generator.cleanSubredditArray = function(subreddits, moreExcludedSubreddits){
+        if (!moreExcludedSubreddits){
+            moreExcludedSubreddits = [];
+        }
         var okaySubreddits = [];
         for (var i = 0; i != subreddits.length; ++i){
             var checkingThisSubreddit = subreddits[i];
-            if (generator.excludeList.indexOf(checkingThisSubreddit) === -1 
+            if (checkingThisSubreddit 
+                && moreExcludedSubreddits.indexOf(checkingThisSubreddit) === -1
+                && generator.excludeList.indexOf(checkingThisSubreddit) === -1 
                 &&     okaySubreddits.indexOf(checkingThisSubreddit) === -1){
                 okaySubreddits.push(checkingThisSubreddit);
             }
