@@ -296,7 +296,6 @@ var popupManager = (function(){
     };
     //takes comma-separated (or spaces) words and returns an array of those values
     popupManager.commaListToArray = function(text){
-        console.log(text);
         //split by comma or space
         return text.split(/[ ,]+/);
     };

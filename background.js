@@ -249,7 +249,6 @@ var randomGenerator = (function() {
     //call this from outside object
     //whill call for serendipitous subreddits and seed subreddits async, then adds them together
     generator.generatingRandomFolder = function(settings){
-        console.log(settings);
         generator.initialisingValues(settings);
         var promises = new Array(2);
         //get both sets async
@@ -397,9 +396,6 @@ var InitComptroller = function(){
     //stores settings object to disk
     comptroller.storingSettings = function(settings){
         browser.storage.local.set({'settings': settings});
-        console.log('here');
-        console.log(settings);
-
     }
 
     //loads settings object from disk
@@ -415,7 +411,6 @@ var InitComptroller = function(){
     //NOTE: error checking is done client side before seding a message through.
     //both actions and requests return stuff. it's turned out not to be as helpful a distinction as i thought
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        console.log(sender);
         if (message.action){
             if (message.action === 'generate_random_folder' && message.settings){
                 var getting = randomGenerator.generatingRandomFolder(message.settings);
