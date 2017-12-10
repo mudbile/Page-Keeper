@@ -35,7 +35,9 @@ this kind of search directly, so it really is just sifting through them until it
 of subreddits).
 
 Screenshot #1: settings:
+
 ![settings](/img/demo-settings.png)
 
-Screenshot #2: results of a search	 
+Screenshot #2: results of a search	
+ 
 ![results](/img/demo-results.png)
