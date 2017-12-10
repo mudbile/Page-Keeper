@@ -35,7 +35,7 @@ this kind of search directly, so it really is just sifting through them until it
 of subreddits).
 
 Screenshot #1: settings:
-![settings](https://raw.githubusercontent.com/mudbile/Page-Keeper/master/img/demo_settings.png)
+![settings](img/demo_settings.png)
 
 Screenshot #2: results of a search
-![results](https://raw.githubusercontent.com/mudbile/Page-Keeper/master/img/demo_results.png)
+![results](img/demo_results.png)
