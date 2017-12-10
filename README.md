@@ -33,3 +33,9 @@ restricting your search to smaller/unknown subreddits. This affects both random 
 but keep in mind setting this smaller means longer search time (reddit’s api doesn’t seem to support 
 this kind of search directly, so it really is just sifting through them until it gets the desired amount 
 of subreddits).
+
+Screenshot #1: settings:
+![settings](https://raw.githubusercontent.com/mudbile/Page-Keeper/master/img/demo_settings.png)
+
+Screenshot #2: results of a search
+![results](https://raw.githubusercontent.com/mudbile/Page-Keeper/master/img/demo_results.png)
