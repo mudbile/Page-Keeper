@@ -215,6 +215,9 @@ var popupManager = (function(){
 
     //subreddits optional - defaults to []
     popupManager.addingFolder = function(id, subreddits){
+        if (!id){
+            return;
+        }
         if (!subreddits){
             subreddits = [];
         }
@@ -248,7 +251,7 @@ var popupManager = (function(){
         }
         //get name from user
         var id = prompt(prompt1);
-        if (id === null){
+        if (id === null || id.trim() === ""){
             return null;
         }
         while(popupManager.isValueInArray(id, popupManager.getIdPool())){

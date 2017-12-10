@@ -1,7 +1,10 @@
-# AnonSays
+# Page Keeper
 
 This web extension allows a user to keep a set of front pages for the reddit website, 
-available to them without having to log in. You can create, remove, rename and duplicate 
+available to them without having to log in. It also generates front pages of random and pseudo random subreddits,
+wth the interesting option of limiting to smaller/unknown subreddits.
+
+You can create, remove, rename and duplicate 
 front pages at any time. These are automatically saved for you, available any time you use 
 your browser. To visit the front page, click “front page”. To add a subreddit by name, enter 
 it into the textbox and press enter or click the “add” button to add it to the currently 

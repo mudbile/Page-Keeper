@@ -1,13 +1,13 @@
 {
     
       "manifest_version": 2,
-      "name": "AnonSays",
+      "name": "Page Keeper",
       "version": "1.0",
     
-      "description": "Manages a custom front page for reddit.com without needing to log in",
+      "description": "Manages (and generates) front pages for reddit.com without needing to log in",
     
       "icons": {
-        "48": "icons/anonsays-48.png"
+        "48": "icons/pagekeeepr-48.png"
       },
 
       "permissions": [
@@ -17,8 +17,8 @@
       ],
 
       "browser_action": {
-        "default_icon": "icons/anonsays-48.png",
-        "default_title": "AnonSays",
+        "default_icon": "icons/pagekeeper-48.png",
+        "default_title": "Page Keeper",
         "default_popup": "popup/popup.html",
         "browser_style": false
       },
@@ -26,7 +26,7 @@
       "content_scripts": [
         {
           "matches": ["*://*.reddit.com/*"],
-          "js": ["anonsays.js"]
+          "js": ["page_keeper.js"]
         }
       ],
 
