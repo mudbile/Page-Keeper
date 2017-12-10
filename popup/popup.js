@@ -1,20 +1,26 @@
-//like console.log- just uses the header to relay messages while testing
-var testMessage = function(message){
-    document.getElementById('title').innerHTML = message;
-}
-
-
-
+//stores which folder the user was looking at last
+//and the generator settings
 window.addEventListener('unload', eventContext => {
     browser.runtime.sendMessage({action: 'store_active_id', id: popupManager.getActiveFolderId()});
+    browser.runtime.sendMessage({action: 'store_settings', settings: popupManager.getSettings(true)});
     //remember active folder here
     //browser.runtime.sendMessage({request: 'console', message: 'would save here}'});
 });
+//loads which folder the user was looking at last
+//and the generator settings -or the default settings object
 window.addEventListener('load', eventContext => {
+    //load and update the folder-specific html parts
     browser.runtime.sendMessage({request: 'stored_active_id'}).then(response => {
-        testMessage('setting');
         if (response.id){
             popupManager.setActiveFolder(response.id);
+        }
+    })
+    //load in and update the settings html
+    browser.runtime.sendMessage({request: 'stored_settings'}).then(response => {
+        //setSettings reverts to defaults given argument is falsey. thus, if there
+        //was nothing retreived from storage, we will set up with defaults
+        if (response){
+            popupManager.setSettings(response.settings);
         }
     })
 });
@@ -23,8 +29,22 @@ window.addEventListener('load', eventContext => {
 
 var popupManager = (function(){
     var popupManager = {};
+    //loaded in if there are no settings stored on disk
+    popupManager.defaultSettings = {
+        seed: "",
+        total_to_get: 10,
+        serendipity_weight:1,
+        seed_weight: 1,
+        num_seed_search_pages_to_get: 10,
+        seed_sort_by: "relevance",
+        user_subscriber_limit: 0,
+        user_active_limit: 0,
+        nsfw_restricted: true,
+        exclude_list: []
+    }
 
     popupManager.baseURL = 'https://www.reddit.com/r/';
+    popupManager.hideConsoleTimer = null;
     //store all the elements
     popupManager.folderSelections = document.getElementById('folder-selections');
     popupManager.folderRenameButton = document.getElementById('folder-rename');
@@ -34,26 +54,75 @@ var popupManager = (function(){
     popupManager.gotoFrontPageAnchor =  document.getElementById('goto-frontpage-a');
     popupManager.addSubredditsTextbox = document.getElementById('generic-add-textbox');
     popupManager.addSubredditsButton =  document.getElementById('generic-add-button');
-    popupManager.folderDetailsToggle =  document.getElementById('subscription-details-toggle');
+    popupManager.settingsToggle =  document.getElementById('settings-toggle');
+    popupManager.settingsDiv = document.getElementById('settings');
     popupManager.folderDetailsDiv =     document.getElementById('subscription-details');
     popupManager.currentPageInclusionToggle = document.getElementById('toggle-for-current');
     popupManager.folderTableDiv =       document.getElementById('subscription-table-div');
     popupManager.generatorButton = document.getElementById('folder-generate-random');
+
+    popupManager.genNumTotal = document.getElementById('gen-total');
+    popupManager.genWeightRandom = document.getElementById('gen-num-random');
+    popupManager.genWeightSeeded = document.getElementById('gen-num-seeded');
+    popupManager.genNumPages = document.getElementById('gen-num-seeded-pages');
+    popupManager.genSubscriberLimit = document.getElementById('gen-subscriber-limit');
+    popupManager.genActiveLimit = document.getElementById('gen-active-limit');
+    popupManager.genSortBy = document.getElementById('gen-sort-by');
+    popupManager.genNSFWAllowed = document.getElementById('gen-nsfw');
+    popupManager.genExclude = document.getElementById('gen-exclude');
+    popupManager.generatorButton = document.getElementById('folder-generate-random');
+    popupManager.console = document.getElementById('console');
+    popupManager.seedTextBox = document.getElementById('gen-seed');
+
     //**********listeners***************** */
+    //generates a random folder of subreddits based on generator settings
     popupManager.generatorButton.addEventListener('click', eventContext => {
-        popupManager.generatorButton.disabled = true;
-        var activeId = popupManager.getActiveFolderId();
-        var seed = prompt('Enter a seed word');
-        if (!seed){
-            popupManager.generatorButton.disabled = false;
+        //disable button and show the message console in the settings tab
+        popupManager.buttonAndConsoleBeforeGeneration();
+        //var activeId = popupManager.getActiveFolderId();
+        var settings;
+        try {
+            settings = popupManager.getSettings(false);
+        } catch(e){
+            popupManager.buttonAndConsoleAfterGeneration(e);
             return;
         }
-        browser.runtime.sendMessage({action: 'generate_random_folder', seed: seed})
+        if (!settings.seed && settings.seed_weight !== 0){
+            popupManager.buttonAndConsoleAfterGeneration("seed required (seed weight > 0)");
+            return;
+        } 
+        popupManager.consoleMessage('retrieving...');
+        browser.runtime.sendMessage({action: 'generate_random_folder', settings: settings})
         .then(response => {
-            popupManager.generatorButton.disabled = false;
+            popupManager.buttonAndConsoleAfterGeneration("finished");
             return popupManager.addingFolder(popupManager.getUniqueIdFromBase('generated'), response.subreddits);
+
+        }, reason => {//if the chain of promises fails for some reason it'll propagate all the way up to here:
+            popupManager.buttonAndConsoleAfterGeneration("error: " + reason);
+            
         })
     });
+
+    //enables generator button and shows a message for a few seconds before hiding the message console
+    popupManager.buttonAndConsoleAfterGeneration = function(finalMessage){
+        popupManager.generatorButton.disabled = false;
+        popupManager.consoleMessage(finalMessage);
+        popupManager.hideConsoleTimer = setTimeout(() => {  
+            popupManager.console.style.display = 'none';
+            popupManager.console.value = "";
+        }, 4000)
+    }
+    //disables the button and shows the message console
+    popupManager.buttonAndConsoleBeforeGeneration = function(){
+        clearTimeout(popupManager.hideConsoleTimer);
+        popupManager.generatorButton.disabled = true;
+        popupManager.console.value = "";
+        popupManager.console.style.display = 'inline';
+    }
+    //wrapper function for writing something out to the message console
+    popupManager.consoleMessage = function(message){
+        popupManager.console.value = message;
+    }
 
     //returns the unique id <base>_<i> where base is given and i is minimum tpo make it unique
     //assumes less than 1000 with same base
@@ -88,8 +157,8 @@ var popupManager = (function(){
     });
     
     //handle displaying / hiding subscription details
-    popupManager.folderDetailsToggle.addEventListener('click', eventContext => {
-        var details = popupManager.folderDetailsDiv;
+    popupManager.settingsToggle.addEventListener('click', eventContext => {
+        var details = popupManager.settingsDiv;
         if (!details.style.display || details.style.display === 'none'){
             details.style.display = 'inline';
         } else {
@@ -207,6 +276,81 @@ var popupManager = (function(){
         return pool;
     }
 
+
+    //converts text to integer. throws error unless integer and non-negative unless
+    //failGraceful is true- if failGraceful is true then it returns 0;
+    popupManager.textToNonNegInt = function(text, fieldName, failGraceful){
+        var val = Number(text);
+        if(!isNaN(text) && parseInt(val) == text && !isNaN(parseInt(text, 10)) && val >= 0){
+            return val;
+        } else {
+            if (failGraceful){
+                return 0;
+            } else {
+                throw "invalid argument: " + fieldName;
+            }
+        }
+    };
+    //takes comma-separated (or spaces) words and returns an array of those values
+    popupManager.commaListToArray = function(text){
+        console.log(text);
+        //split by comma or space
+        return text.split(/[ ,]+/);
+    };
+    //takes an array and returns a comma-separated string.
+    popupManager.arrayToCommaList = function(array){
+        return array.join(', ');
+    };
+
+
+
+    //grabs the values from the settings html and returns as an object
+    //allow invalid for when you're storing to disk- will just save invalid text inputs as 0
+    popupManager.getSettings = function(allowInvalid){
+        var settingsObj = {
+            seed: popupManager.seedTextBox.value,
+            total_to_get: popupManager.textToNonNegInt(popupManager.genNumTotal.value, "total", allowInvalid),
+            serendipity_weight: popupManager.textToNonNegInt(popupManager.genWeightRandom.value, "random weight", allowInvalid),
+            seed_weight: popupManager.textToNonNegInt(popupManager.genWeightSeeded.value, "seed weight", allowInvalid),
+            num_seed_search_pages_to_get: popupManager.textToNonNegInt(popupManager.genNumPages.value, "number search pages", allowInvalid),
+            seed_sort_by: popupManager.genSortBy.selectedOptions[0].value,
+            user_subscriber_limit: popupManager.textToNonNegInt(popupManager.genSubscriberLimit.value, "subscriber limit", allowInvalid),
+            user_active_limit: popupManager.textToNonNegInt(popupManager.genActiveLimit.value, "active user limit", allowInvalid),
+            nsfw_restricted: !popupManager.genNSFWAllowed.checked,
+            exclude_list: popupManager.commaListToArray(popupManager.genExclude.value)
+        };
+        return settingsObj;
+    }
+
+    //updates html to reflect a settings object
+    //falls back to default values if there's no settingsObject given
+    popupManager.setSettings = function(settingsObj){
+
+        if (!settingsObj){
+            settingsObj = popupManager.defaultSettings;
+        }
+        popupManager.seedTextBox.value = settingsObj.seed;
+        popupManager.genNumTotal.value = settingsObj.total_to_get;
+        popupManager.genWeightRandom.value = settingsObj.serendipity_weight;
+        popupManager.genWeightSeeded.value = settingsObj.seed_weight;
+        popupManager.genNumPages.value = settingsObj.num_seed_search_pages_to_get;
+        //set selected option
+        for (var i = 0; i != popupManager.genSortBy.options.length; ++i){
+            var opt = popupManager.genSortBy.options[i];
+            if (opt.value === settingsObj.seed_sort_by){
+                opt.selected = true;
+            } else {
+                opt.selected = false;
+            }
+        }
+        popupManager.genSubscriberLimit.value = settingsObj.user_subscriber_limit;
+        popupManager.genActiveLimit.value = settingsObj.user_active_limit;
+        popupManager.genNSFWAllowed.checked = !settingsObj.nsfw_restricted;
+        popupManager.genExclude.value = popupManager.arrayToCommaList(settingsObj.exclude_list);
+    }
+
+    
+
     //adds a folder the selections menu item
     popupManager.addFolderToSelections = function(id){
         this.folderSelections.add(new Option(id));
@@ -315,34 +459,28 @@ var popupManager = (function(){
     popupManager.updatePopup = function(subreddits){
         this.updateToggleState(); 
         this.updateFrontpageHref(subreddits);
+        //start from scratch
+        this.folderTableDiv.innerHTML = null;
 
         //disables stuff if there are no folders
         if (this.getActiveFolderId() === null){
-            this.folderDetailsToggle.disabled = true;
             this.folderRenameButton.disabled = true;
             this.folderRemoveButton.disabled = true;
             this.folderDuplicateButton.disabled = true;
             this.folderSelections.disabled = true;
-            popupManager.folderDetailsDiv.style.display = 'none';
+            this.addSubredditsButton.disabled = true;
+            this.addSubredditsTextbox.disabled = true;
             return;
         } else {
-            this.folderDetailsToggle.disabled = false;
-            this.folderDetailsToggle.disabled = false;
+            this.addSubredditsButton.disabled = false;
+            this.addSubredditsTextbox.disabled = false;
             this.folderRenameButton.disabled = false;
             this.folderRemoveButton.disabled = false;
             this.folderDuplicateButton.disabled = false;
             this.folderSelections.disabled = false;
         }
-        
-        //display message if active folder has no subreddits yet
-        if (subreddits.length === 0){
-            this.folderTableDiv.innerHTML = "no subscriptions yet";
-            return;
-        }
-
-        //reset the innerhtml
-        this.folderTableDiv.innerHTML = null;
     
+        
         //init table
         var folderTable = document.createElement('table');
         folderTable.id = 'subscription-table';
@@ -378,7 +516,6 @@ var popupManager = (function(){
         });
     }
 
-    testMessage('yarr');
     popupManager.gettingCurrentURL = function(){
         return browser.runtime.sendMessage({request: 'current_url'}).then(response => {
             return response.current_url;

@@ -45,16 +45,12 @@ button:disabled {
 #container {
     padding: 4px;
 }
+
 #toggle {
     grid-column: 1 / span 1;
 }
 
-#subscription-details-toggle {
-    display: block;
-    width: 100%;
-    font-size: 12px;
-    margin: 2px 0 0 0;
-}
+
 
 #title {
     font-size: 12px;
@@ -78,9 +74,10 @@ button:disabled {
 }
 
 #subscription-details{
-    display: none;
+    /*display: none;*/
     align-content: center;
 }
+
 
 #subscription-table-div {
     margin: 4px 0 0px 0;
@@ -184,4 +181,37 @@ button#folder-generate-random {
     grid-row: 2 / span 2;
     grid-column: 2 / span 1;
     
+}
+
+
+
+
+
+#settings-toggle {
+    display: block;
+    width: 100%;
+    font-size: 12px;
+    margin: 2px 0 0 0;
+}
+
+#settings{
+    display: none;
+    font-size: 13px;
+}
+#settings-table td:first-of-type {
+    text-align: right;
+} 
+
+
+#console-div {
+    padding-right: 5px;
+}
+#console {
+    font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+    font-size: 13px;
+    display: none;
+    width: 100%;
+    background-color: black;
+    color: rgb(132, 248, 200);   
+
 }

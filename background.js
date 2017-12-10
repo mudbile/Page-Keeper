@@ -1,20 +1,10 @@
-//idea - get authors of content and go through them to other subreddits
-
-
-//working on the generator. it works for serendipitous subreddits. now we need to work on
-// getting the seed search ones, joining them and returning them. use same recursion tactic as in serendip
-
-//also todo- store active selection in bg
-//          - add a restriction to limit to less popular subreddits
-//          - add nsfw restriction
+//TODO:
 //          - store out 'after' for seed searches for a particular phrase (have setting whether to do so
 //                    and whether to use it)
-//          - you'll get duplicates if a subreddit is in both groups
 //          -add weighting and stuff for comments search- exactly the same as subreddit seed search but use
 //              response.data.children[i].data.subreddit instead of response.data.children[i].data.display_name
-//          -make generator work when no active id (ie no folders yet)
 //          -go through and provide failure functions for promises (particularly high-level gui stuff)
-//          - settings page
+//          -idea - get authors of content and go through them to other subreddits
 
 var randomGenerator = (function() {
     //https://www.reddit.com/search.json?q=<seed>&sort=relevance&type=sr/')); but get after random count
@@ -22,6 +12,7 @@ var randomGenerator = (function() {
     var generator = {
         //weights are used to calculate how many of each to get - if total is 10 and one is 30 and the other 70, 
         //then one will get 3 and the other 10
+        seed: null,
         weights : {
             serendipity : null,
             seed : null
@@ -44,71 +35,9 @@ var randomGenerator = (function() {
         seed_sort_by: null
     };
 
-    //gets the local values (that the user will store on the settings page)
-    generator.initialisingValues = function(seed){
-        //local.get accepts an object that provdes default values if property isn't found
-        var defaultValues = {
-            total_to_get: 50,
-            serendipity_weight: 1,
-            seed_weight: 1,
-            num_seed_search_pages_to_get: 20,
-            seed_sort_by: 'new',
-            user_subscriber_limit: 0,
-            user_active_limit: 1000,
-            nsfw_restricted: true,
-            exclude_list: []
-            //exclude_list: ['news', 'interestingasfuck', 'todayilearned', 'gaming', 'MurderedByWords', 'MemeEconomy', 'OldSchoolCool', 'mildlyinteresting', 'whitepeoplegifs', 'aww', 'The_Donald', 'technology', ]
-        }
-        return browser.storage.local.get(defaultValues).then(response => {
-            generator.weights.serendipity = response.serendipity_weight;
-            generator.weights.seed = response.seed_weight;
-            generator.numToGet.total = response.total_to_get;
-            //calculates numbers to get from relative weights
-            generator.numToGet.seed = Math.floor(response.total_to_get * (response.seed_weight / 
-                                            (response.serendipity_weight + response.seed_weight)));
-            generator.numToGet.serendipity = generator.numToGet.total - generator.numToGet.seed;
-            generator.seed = seed;
-            generator.excludeList = response.exclude_list;
-            generator.numSeedSearchPagesToGet = response.num_seed_search_pages_to_get;
-            generator.seedSortBy = response.seed_sort_by;
-            generator.userSubscriberLimit = response.user_subscriber_limit;
-            generator.userActiveLimit = response.user_active_limit;
-            generator.nsfwRestricted = response.nsfw_restricted;
-        });
-    }
 
-    //call this from outside object
-    //whill call for serendipitous subreddits and seed subreddits async, then adds them together
-    generator.generatingRandomFolder = function(seed){
-        return generator.initialisingValues().then(() => {
-            var promises = new Array(2);
-            //get both sets async
-            promises[0] = generator.gettingSerendipitySubreddits(generator.numToGet.serendipity);
-            promises[1] = generator.gettingSeededSubreddits(generator.numToGet.seed, seed);
-            //return them all as one array
-            return Promise.all(promises).then(groups => {
-                console.log(groups[0]);
-                console.log(groups[1]);
-                //add the ones from seeds that aren't already in serendip group
-                var subreddits = groups[0];
-                for (var i = 0; i != groups[1].length; ++i){
-                    console.log('here');
-                    if (subreddits.indexOf(groups[1][i]) === -1){
-                        console.log('here1');
-                        subreddits.push(groups[1][i]);
-                    }
-                }
-                console.log('and finished:');
-                console.log(subreddits);
-                return subreddits;
-            })
-        })
-    };
+    /*******************SPECIFIC TO GUIDED SEARCH*************************/
 
-    //pausses promise chain for delay ms, then returns the value it was given as a promise
-    // generator.pausing = function(delay, value) {
-    //     return new Promise(resolve => setTimeout(resolve, delay, value));
-    // }
 
     //returns an array of as many subreddit names as it can, given the seed results and the
     //value of generator.numSeedSearchPagesToGet
@@ -126,18 +55,15 @@ var randomGenerator = (function() {
                 //a link will make the previousLinkResult.after property null
                 //if there are no more pages to get OR something's wrong wih the json
                 if (previousLinkResult.after === null){
-                    console.log('skipping link because ran out...');
                     return previousLinkResult;
                 }
                 var fullURL = url +'&after='+previousLinkResult.after;
-                console.log(fullURL);
                 //get the json, from that the subreddits that pass restrictions test...
                 return generator.gettingRedditApiResponse(fullURL).then(response => {
                     //check data
                     var dataOkay = response && response.data && response.data.after
                                 && response.data.children;
                     if (dataOkay){
-                        console.log(response);
                         var subredditPromises = [];
                         //fill in the promised data
                         response.data.children.forEach(child => {
@@ -148,20 +74,13 @@ var randomGenerator = (function() {
                         //wait for all the subreddits to be checked and filter them.
                         //elem === null means they failed.
                         return Promise.all(subredditPromises).then(results => {
-                            console.log('before filtering nulls: ');
-                            console.log(results);
                             var filtered = results.filter(elem => elem !== null);
-                            console.log('after filtering nulls: ');
-                            console.log(filtered);
-                            console.log('attaching...');
-                            console.log(previousLinkResult.possibilities.concat(filtered));
                             previousLinkResult.possibilities = previousLinkResult.possibilities.concat(filtered);
                             //response.data.after is either null or gives the code for the 'after' url setting
                             previousLinkResult.after = response.data.after;
                             return previousLinkResult;
                         });
                     } else {
-                        console.log('data not okay:');
                         //console.log(data);
                         //previousLinkResult.after = null;
                         return previousLinkResult;
@@ -173,42 +92,7 @@ var randomGenerator = (function() {
         return waitChain.then(lastLinkResult => {return lastLinkResult.possibilities;});
     }
 
-    //This function returns a random number between [min, max)
-    //max and min must be given as integers
-    generator.randBetween = function(min, max){
-        return Math.floor(Math.random() * (max - min)) + min;
-    };
 
-    //fisher-yates
-    generator.shuffleArrayInPlace = function(array){
-        for(var i = 0; i != array.length - 2; ++i){
-            var j = generator.randBetween(i, array.length);
-            var temp = array[i];
-            array[i] = array[j];
-            array[j] = temp;
-        }
-    }
-
-    //randomly selects numToGet elements from an array of string possibilities
-    //returns new array but does shuffle given array
-    generator.chooseRandomElements = function(numToGet, possibilities){
-        console.log('coming into function. num to get: ' + numToGet+ ' of '+ possibilities.length);
-        console.log(possibilities);
-
-        if (numToGet >= possibilities.length){
-            return possibilities;
-        }
-
-        //shuffle the Array
-        generator.shuffleArrayInPlace(possibilities);
-        //reduce numToGet if need be
-        
-        //slice a chunk from the shuffled array [begin, end)
-        var subreddits = possibilities.slice(0, numToGet);
-        console.log('coming out of function. numgot: ' + subreddits.length);
-        console.log(subreddits);
-        return subreddits;
-    }
 
     //returns an array of promises for the seeded group of subreddits
     generator.gettingSeededSubreddits = function(numToGet, seed){
@@ -217,38 +101,14 @@ var randomGenerator = (function() {
         }
         //get and store first num_seed_search_pages_to_get pages of search results
         return generator.gettingSeedNamesFromReddit(seed).then(possibilities => {
-            console.log('possibililities')
-            console.log(possibilities);
             return generator.chooseRandomElements(numToGet, possibilities);
         })
 
     }
 
-    //returns id on pass, null on fail (null so it's removed on subreddit array clean step)
-    // checks exclusion list and restrictions
-    //but it's kept here for completeness for other methods
-    generator.checkingSubredditAgainstRestrictions = function(id){
-        var gettingInfo = generator.gettingRedditApiResponse('https://www.reddit.com/r/'+id+'/about/.json');
-        return gettingInfo.then(info => {
-            console.log(info);
-            if (info.data){
-                console.log('over 18: ' + info.data.over18);
-                console.log(info.data.subscribers + ' vs ' + generator.userSubscriberLimit);
-                console.log(info.data.accounts_active + ' vs ' + generator.userActiveLimit);
-            }
-            if (info.data && generator.excludeList.indexOf(id) === -1
-                && (info.data.over18 === false || generator.nsfw_restricted === true)
-                && (info.data.subscribers < generator.userSubscriberLimit || generator.userSubscriberLimit <= 0)
-                && (info.data.accounts_active < generator.userActiveLimit || generator.userActiveLimit <= 0)
-            ){
-                console.log('okay: ' + id);
-                return id;
-            } else {
-                console.log('not okay: ' + id);
-                return null;
-            }
-        });
-    };
+
+    /*******************SPECIFIC TO RANDOM SEARCH*************************/
+
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
     //moreExcludedSubreddits iis used to pass the growing list of subreddits down the recusion line,
@@ -258,8 +118,6 @@ var randomGenerator = (function() {
         if (!moreExcludedSubreddits){
             moreExcludedSubreddits = [];
         }
-        console.log('excluded list: ');
-        console.log(moreExcludedSubreddits);
         if (numToGet === 0){
             return [];
         }
@@ -282,11 +140,9 @@ var randomGenerator = (function() {
                                                 if (dataOkay){
                                                     var id = response[0].data.children[0].data.subreddit;
                                                     //fill in the promised data - a subreddit name
-                                                    console.log(id);
                                                     return generator.checkingSubredditAgainstRestrictions(id);
        
                                                 } else {
-                                                    console.log('failed: ' + response[0].data.children[0].data.subreddit);
                                                     return null;
                                                 }
                                             });
@@ -294,28 +150,18 @@ var randomGenerator = (function() {
         //now we need to ensure there are no duplicates and no excluded subreddits
         //but we still need to fill the quota, so there's recursion
         return Promise.all(subredditPromises).then(subreddits => {
-            console.log('got: ');
-            console.log(subreddits);
             var okaySubredits = generator.cleanSubredditArray(subreddits, moreExcludedSubreddits);
-            console.log('after clean (cmp excluded list): ');
-            console.log(okaySubredits);
             //the quota being filled is our base condition
             if (okaySubredits.length >= numToGet){
                 var paredDown = generator.chooseRandomElements(numToGet, okaySubredits);
-                console.log('pared down... returning: ');
-                console.log(paredDown);
                 return paredDown;
             //otherwise concat the results of a recursive call asking 
             //for the number of subreddits still to get, and return that 
             } else {                
                 var stillToGet = numToGet - okaySubredits.length;
-                console.log('need ' +stillToGet+ ' more...');
-                console.log(okaySubredits);
                 return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits.concat(moreExcludedSubreddits))
                                 .then(moreSubreddits => {
-                                    console.log('returning concatenated (cmp excluded list): ');
                                     //console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
-                                    console.log(okaySubredits.concat(moreSubreddits));
                                     //return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
                                     return okaySubredits.concat(moreSubreddits);
                 });
@@ -342,12 +188,119 @@ var randomGenerator = (function() {
         return okaySubreddits;
     }
 
+    /*******************USEFUL TO BOTH*************************/
+
+     //This function returns a random number between [min, max)
+    //max and min must be given as integers
+    generator.randBetween = function(min, max){
+        return Math.floor(Math.random() * (max - min)) + min;
+    };
+
+    //fisher-yates
+    generator.shuffleArrayInPlace = function(array){
+        for(var i = 0; i != array.length - 2; ++i){
+            var j = generator.randBetween(i, array.length);
+            var temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+    }
+
+    //randomly selects numToGet elements from an array of string possibilities
+    //returns new array but does shuffle given array
+    generator.chooseRandomElements = function(numToGet, possibilities){
+        if (numToGet >= possibilities.length){
+            return possibilities;
+        }
+
+        //shuffle the Array
+        generator.shuffleArrayInPlace(possibilities);
+        //reduce numToGet if need be
+        
+        //slice a chunk from the shuffled array [begin, end)
+        var subreddits = possibilities.slice(0, numToGet);
+        return subreddits;
+    }
+
+    
+
+    //returns id on pass, null on fail (null so it's removed on subreddit array clean step)
+    // checks exclusion list and restrictions
+    //but it's kept here for completeness for other methods
+    generator.checkingSubredditAgainstRestrictions = function(id){
+        var gettingInfo = generator.gettingRedditApiResponse('https://www.reddit.com/r/'+id+'/about/.json');
+        return gettingInfo.then(info => {
+            if (info && info.data && generator.excludeList.indexOf(id) === -1
+                && (info.data.over18 === false || generator.nsfw_restricted === true)
+                && (info.data.subscribers < generator.userSubscriberLimit || generator.userSubscriberLimit <= 0)
+                && (info.data.accounts_active < generator.userActiveLimit || generator.userActiveLimit <= 0)
+            ){
+                return id;
+            } else {
+                return null;
+            }
+        });
+    };
+
+
+
+    /*******************MAIN FUNCTIONS*************************/
+
+    //call this from outside object
+    //whill call for serendipitous subreddits and seed subreddits async, then adds them together
+    generator.generatingRandomFolder = function(settings){
+        console.log(settings);
+        generator.initialisingValues(settings);
+        var promises = new Array(2);
+        //get both sets async
+        promises[0] = generator.gettingSerendipitySubreddits(generator.numToGet.serendipity);
+        promises[1] = generator.gettingSeededSubreddits(generator.numToGet.seed, generator.seed);
+        //return them all as one array
+        return Promise.all(promises).then(groups => {
+            //add the ones from seeds that aren't already in serendip group
+            var subreddits = groups[0];
+            for (var i = 0; i != groups[1].length; ++i){
+                if (subreddits.indexOf(groups[1][i]) === -1){
+                    subreddits.push(groups[1][i]);
+                }
+            }
+            return subreddits;
+        });
+    }
+
+
+    //fille dgenerator object with values from settings
+    generator.initialisingValues = function(settings){
+        generator.seed = settings.seed;
+        generator.numToGet.total = settings.total_to_get;
+        generator.weights.serendipity = settings.serendipity_weight;
+        generator.weights.seed = settings.seed_weight;
+        if (generator.weights.serendipity + generator.weights.seed === 0){
+            generator.numToGet.seed = 0;
+            generator.numToGet.serendipity = 0;
+        } else {
+            generator.numToGet.seed = Math.floor(generator.numToGet.total * (generator.weights.seed / 
+                (generator.weights.serendipity + generator.weights.seed)));
+            generator.numToGet.serendipity = generator.numToGet.total - generator.numToGet.seed;
+        }        
+        generator.numSeedSearchPagesToGet =  settings.num_seed_search_pages_to_get;
+        generator.seedSortBy = settings.seed_sort_by;
+        generator.userSubscriberLimit =  settings.user_subscriber_limit;
+        generator.userActiveLimit =  settings.user_active_limit;
+        generator.nsfwRestricted = settings.nsfw_restricted;
+        generator.excludeList = settings.exclude_list;
+        //exclude_list: ['news', 'interestingasfuck', 'todayilearned', 'gaming', 'MurderedByWords', 'MemeEconomy', 'OldSchoolCool', 'mildlyinteresting', 'whitepeoplegifs', 'aww', 'The_Donald', 'technology', ]
+    } 
+
+    
+ 
+
     //given an api url(e.g. https://www.reddit.com/api/multi/user/deltaprogress/m/artncomics/.json)
     //returns the decoded json object found there
     generator.gettingRedditApiResponse = function(apiURL){
         return fetch(apiURL).then(response => {
             return response.json();
-        }, reason => {console.log('here'); console.log(reason); return null;}); 
+        }, reason => {return null;}); 
     };
 
     return generator;
@@ -418,9 +371,6 @@ var InitComptroller = function(){
     };
 
 
-
-
-
     //queries for the currently active tab
     comptroller.gettingCurrentTab = function(){
         return browser.tabs.query({
@@ -444,25 +394,43 @@ var InitComptroller = function(){
         return url.startsWith('https://www.reddit.com/');    
     }
 
+    //stores settings object to disk
+    comptroller.storingSettings = function(settings){
+        browser.storage.local.set({'settings': settings});
+        console.log('here');
+        console.log(settings);
+
+    }
+
+    //loads settings object from disk
+    comptroller.gettingSettings = function(settings){
+        return browser.storage.local.get('settings');
+    }
+
+
+
+
     //message listener controller
     //you can either return info by sendresponse or by returning a promise that returns some info
     //NOTE: error checking is done client side before seding a message through.
     //both actions and requests return stuff. it's turned out not to be as helpful a distinction as i thought
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        console.log(sender);
         if (message.action){
-            if (message.action === 'generate_random_folder' && message.seed){
-                var getting = randomGenerator.generatingRandomFolder(message.seed);
+            if (message.action === 'generate_random_folder' && message.settings){
+                var getting = randomGenerator.generatingRandomFolder(message.settings);
                 return getting.then(subreddits => {
                     return {subreddits: subreddits};
-                })
-                //console.log('here: ' + );
-                //sendResponse({subreddits: randomGenerator.generateRandomFolder(currentSubreddits, message.seed)});
+                });
+            }
+            //storesd given settings object to disk
+            if (message.action === 'store_settings' && message.settings){
+                comptroller.storingSettings(message.settings);
             }
 
             //note: this is used for the popup unload- this doesn't track the active id while the popup
             //is open
             if (message.action === 'store_active_id' && message.id){
-                console.log('storing:' + message.id);
                 comptroller.manager.storedActiveId = message.id;
             }
 
@@ -501,8 +469,9 @@ var InitComptroller = function(){
             }
 
         } else if (message.request){
-            //for testing purposes
-            if (message.request === 'console'){
+            //gets settings object from disk
+            if (message.request === 'stored_settings'){
+                return comptroller.gettingSettings();
             }
 
             if (message.request === 'current_url'){

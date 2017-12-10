@@ -27,20 +27,139 @@
         <button id='folder-generate-random'>?</button>
     </div>
 
-    <!--edit subscriptions toggle button-->
-    <button type="button" id="subscription-details-toggle">edit subscriptions</button>
-    <!--edit subsciptions area-->
-    <div id="subscription-details">
 
+
+
+    <!--settings-->
+    <button type="button" id="settings-toggle">generator settings</button>
+    <!--edit subsciptions area-->
+    <div id="settings">
+      
+      <table id="settings-table">
+        <tr>
+            <div id='console-div'>
+                <input type="text" id="console" value ="" readonly=true/>
+            </div>
+            
+        </tr>
+
+        <tr>
+            <td>
+                <label title="Search term used for guided search.">seed: </label>
+            </td>
+            <td>
+                <input type="text" id="gen-seed" value=""/>
+            </td>
+          </tr>
+
+
+          <tr>
+              <td>
+                <label title="Total number of subreddits to get.">total to get: </label>
+              </td>
+              <td>
+                <input type="text" id="gen-total" value=""/>
+              </td>
+            </tr>
+
+          <tr>
+          <td>
+              <label title="Weight given to guided searches, relative to random searches. If they're equal, it's 50/50.">
+                            seeded weight: 
+              </label>
+          </td>
+          <td>
+              <input type="text" id="gen-num-seeded" value=""/>
+          </td>
+        </tr>
+
+      <tr>
+        <td>
+          <label title="Weight given to random searched.">random weight: </label><br>
+        </td>
+        <td>
+        <input type="text" id="gen-num-random" value=""/>
+        </td>
+      </tr>
+
+      
+
+      <tr>
+       <td>
+          <label title="Number of pages of search results a guided search will add to the pool of possibilities before picking a maximum of the desired number out. Note: this is not exact, as there is an error causing empty pages sometimes.">
+            page limit: 
+          </label>
+        </td>
+        <td>
+         <input type="text" id="gen-num-seeded-pages" value=""/>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label title="The sort option passed to the reddit search for guided searches.">sort by: </label>
+        </td>
+        <td>
+          <select id="gen-sort-by">
+            <option selected="selected">relevance</option>
+            <option>new</option>
+            <option>hot</option>
+            <option>top</option>
+          </select><br>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label title="Maximum number of subscribers for subreddits returned. Note: Set to 0 for no maximum.">subscriber limit: </label>
+        </td>
+        <td>
+          <input type="text" id="gen-subscriber-limit" value=""/>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label title="Maximum number of active users for subreddits returned. Note: Set to 0 for no maximum.">active user limit: </label>
+        </td>
+        <td>
+          <input type="text" id="gen-active-limit" value=""/>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label title="List of all subreddits you don't want (e.g. 'The_Donald, news').">exclude: </label>
+        </td>
+        <td>
+          <input type="text" id="gen-exclude" placeholder="seperate by comma"/>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <label title="Include mature subreddits?">allow nsfw: </label>
+        </td>
+        <td>
+          <input type="checkbox" id="gen-nsfw"/>
+        </td>
+      </tr>
+
+      </table>
+      <hr>
+    </div>
+    
+
+    <!--subreddits for active folder-->
+    <div id="subscription-details">
       <!--add arbitrary subreddits-->
       <div id="generic-add-row">
-        <input type="text" id="generic-add-textbox" value=""/>
-        <button type="button" id="generic-add-button">add</button>
+        <input type="text" id="generic-add-textbox" value="" disabled=true placeholder="add subreddit"/>
+        <button type="button" id="generic-add-button" disabled=true>add</button>
       </div>
 
       <!--display subreddits for folder as dynamically generated table in here-->
       <div id="subscription-table-div">
-        no subscriptions yet
       </div>
 
     </div>
