@@ -41,3 +41,7 @@ Screenshot #1: settings:
 Screenshot #2: results of a search	
  
 ![results](/img/demo-results.png)
+
+Screenshot #3: reddit front page:	
+ 
+![results](/img/demo-reddit.png)
