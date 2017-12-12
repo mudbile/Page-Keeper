@@ -6,12 +6,11 @@
 //          -go through and provide failure functions for promises (particularly high-level gui stuff)
 //          -idea - get authors of content and go through them to other subreddits
 
+//retuend object encapsulates stuff to do with generating random subreddits
 var randomGenerator = (function() {
-    //https://www.reddit.com/search.json?q=<seed>&sort=relevance&type=sr/')); but get after random count
-    
     var generator = {
         //weights are used to calculate how many of each to get - if total is 10 and one is 30 and the other 70, 
-        //then one will get 3 and the other 10
+        //then one will get 3 and the other 7
         seed: null,
         weights : {
             serendipity : null,
@@ -37,7 +36,6 @@ var randomGenerator = (function() {
 
 
     /*******************SPECIFIC TO GUIDED SEARCH*************************/
-
 
     //returns an array of as many subreddit names as it can, given the seed results and the
     //value of generator.numSeedSearchPagesToGet
@@ -111,12 +109,12 @@ var randomGenerator = (function() {
 
 
     //returns a promised list of random subreddits similar to using the serendipity button on reddit
-    //moreExcludedSubreddits iis used to pass the growing list of subreddits down the recusion line,
+    //currentListOfSubreddits iis used to pass the growing list of subreddits down the recusion line,
     //so the child can reject subreddits already got
-    //on each recursive call, moreExcludedSubreddits contains the okaySubreddits up to that point 
-    generator.gettingSerendipitySubreddits = function(numToGet, moreExcludedSubreddits){
-        if (!moreExcludedSubreddits){
-            moreExcludedSubreddits = [];
+    //on each recursive call, currentListOfSubreddits contains the okaySubreddits up to that point 
+    generator.gettingSerendipitySubreddits = function(numToGet, currentListOfSubreddits){
+        if (!currentListOfSubreddits){
+            currentListOfSubreddits = [];
         }
         if (numToGet === 0){
             return [];
@@ -141,7 +139,6 @@ var randomGenerator = (function() {
                                                     var id = response[0].data.children[0].data.subreddit;
                                                     //fill in the promised data - a subreddit name
                                                     return generator.checkingSubredditAgainstRestrictions(id);
-       
                                                 } else {
                                                     return null;
                                                 }
@@ -150,18 +147,16 @@ var randomGenerator = (function() {
         //now we need to ensure there are no duplicates and no excluded subreddits
         //but we still need to fill the quota, so there's recursion
         return Promise.all(subredditPromises).then(subreddits => {
-            var okaySubredits = generator.cleanSubredditArray(subreddits, moreExcludedSubreddits);
+            var okaySubredits = generator.cleanSubredditArray(subreddits, currentListOfSubreddits);
             //the quota being filled is our base condition
             if (okaySubredits.length >= numToGet){
-                var paredDown = generator.chooseRandomElements(numToGet, okaySubredits);
-                return paredDown;
+                return generator.chooseRandomElements(numToGet, okaySubredits);
             //otherwise concat the results of a recursive call asking 
             //for the number of subreddits still to get, and return that 
             } else {                
                 var stillToGet = numToGet - okaySubredits.length;
-                return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits.concat(moreExcludedSubreddits))
+                return generator.gettingSerendipitySubreddits(stillToGet, okaySubredits.concat(currentListOfSubreddits))
                                 .then(moreSubreddits => {
-                                    //console.log(generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits)));
                                     //return generator.cleanSubredditArray(okaySubredits.concat(moreSubreddits));
                                     return okaySubredits.concat(moreSubreddits);
                 });
@@ -170,7 +165,7 @@ var randomGenerator = (function() {
     }
 
     //returns new array with no duplicates and none that are in excludeList
-    //OR in the optional moreExcludedSubreddits. removes null entries too
+    //OR in the optional currentListOfSubreddits. removes null entries too
     generator.cleanSubredditArray = function(subreddits, moreExcludedSubreddits){
         if (!moreExcludedSubreddits){
             moreExcludedSubreddits = [];

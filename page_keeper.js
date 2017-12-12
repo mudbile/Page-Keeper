@@ -2,13 +2,14 @@
 //  * storing subreddit of page
 //  * hiding some elements in the front page (ie the multi)
 
-var anonSays = (function(){
+var pageKeeper = (function(){
     var retObject = {};
     retObject.subreddits = null;
     
     retObject.gettingCurrentPageSubreddits = function(){
         var url = window.location.href;
         var subredditsFromThusURL = this.getSubredditsFromWithinUrl(url);
+        //case 1: url contains subreddit info
         if (subredditsFromThusURL){
             this.subreddits = subredditsFromThusURL;
             return Promise.resolve(subredditsFromThusURL);
@@ -38,9 +39,12 @@ var anonSays = (function(){
         if (retObject.subreddits){
             return retObjects.subreddits;
         } 
+        //go from after the /r/ part
         var startIndex = url.indexOf('/r/') + '/r/'.length;
         var endIndex;
         var subredditsString;
+        //if /r/ wasn't found, return null
+        //otherwise go until next '/' or end of url
         if (startIndex - '/r/'.length !== -1){
             var endIndex = url.indexOf('/', startIndex);
             if (endIndex === -1){
@@ -72,4 +76,4 @@ var anonSays = (function(){
 
 
 
-anonSays.hideSideFrame();
+pageKeeper.hideSideFrame();
