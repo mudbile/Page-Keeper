@@ -4,6 +4,13 @@
       "name": "Page Keeper",
       "version": "1.0",
     
+      "applications": {
+        "gecko": {
+          "id": "pagekeepeer@mudbile.com",
+          "strict_min_version": "42.0"
+        }
+      },
+
       "description": "Manages (and generates) front pages for reddit.com without needing to log in",
     
       "icons": {

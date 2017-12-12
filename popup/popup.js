@@ -502,14 +502,14 @@ var popupManager = (function(){
             col1.appendChild(document.createElement('a'));
             col1.firstElementChild.classList.add('subscription-list-a');
             col1.firstElementChild.setAttribute("href", popupManager.baseURL + subredditName + '/'); 
-            col1.firstElementChild.innerHTML = subredditName;
+            col1.firstElementChild.textContent = subredditName;
             //remove button
             var col2 = document.createElement('td');
             col2.classList.add('col-2');
             col2.appendChild(document.createElement('button'));
             col2.firstElementChild.classList.add('subscription-list-remove');
             col2.firstElementChild.setAttribute("type", "button");
-            col2.firstElementChild.innerHTML = "remove";
+            col2.firstElementChild.textContent = "remove";
             col2.addEventListener('click', eventContext => {popupManager.removingSubreddits([subredditName])});
             //attach
             row.appendChild(col1);
@@ -586,10 +586,10 @@ var popupManager = (function(){
                 //multi (subreddit_included returns false)
                 //we can, however, add from a multi- which adds them all
                 if (response.subreddit_included){
-                    this.currentPageInclusionToggle.innerHTML = '–';
+                    this.currentPageInclusionToggle.textContent = '–';
                     this.currentPageInclusionToggle.onclick = eventContext => {this.removingSubreddits([response.subreddits[0]])};
                 } else {
-                    this.currentPageInclusionToggle.innerHTML = '+';
+                    this.currentPageInclusionToggle.textContent = '+';
                     this.currentPageInclusionToggle.onclick = eventContext => {this.addingSubreddits(response.subreddits)};
                 }
             } 
