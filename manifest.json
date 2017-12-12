@@ -14,7 +14,7 @@
       "description": "Manages (and generates) front pages for reddit.com without needing to log in",
     
       "icons": {
-        "48": "icons/pagekeeeper-48.png"
+        "48": "icons/pagekeeper-48.png"
       },
 
       "permissions": [
